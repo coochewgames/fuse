@@ -1,3 +1,35 @@
+# Simplified FUSE
+
+## Objective
+To output memory data to a local port, allowing ML to poll memory values in learning to play a game.
+
+## Project Goals
+ - Remove (Perl) build script code generation and replace with C
+ - Remove small memory option from build
+ - Remove gotos from code
+ - Simplify use of macros to make code more readable
+
+### Expectations from build updates
+ - Can run on a Pi 0
+ - Can run on an M-series Mac
+
+## Building
+Main development platform is the command line on an M-processor using OS X.  The build for SDL requires SDL 1.2.4 or higher which I could not get to successfully install in the development environment, so this is based on GTK.
+
+### Steps for libspectrum
+  -  `brew install glib`
+  -  `./configure`
+  -  `make`
+  -  `sudo make install`
+
+### Steps for building and running FUSE
+ - `brew install gtk+3`
+ - `brew install automake`
+ - `./autogen.sh`
+ - `./configure`
+ - `make`
+ - `./fuse`
+
 The Free Unix Spectrum Emulator (Fuse) 1.6.0
 ============================================
 

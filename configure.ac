@@ -993,21 +993,6 @@ fi
 AM_CONDITIONAL([BASH_COMPLETION], [test -n "$BASH_COMPLETION_DIR"])
 AC_SUBST([BASH_COMPLETION_DIR])
 
-dnl Do we want the low memory compile?
-AC_MSG_CHECKING(whether low memory compile requested)
-AC_ARG_ENABLE(smallmem,
-[  --enable-smallmem       low memory compile needed],
-if test "$enableval" = yes; then
-    smallmem=yes;
-else
-    smallmem=no;
-fi,
-smallmem=no)
-if test "$smallmem" = no; then
-    AC_DEFINE([HAVE_ENOUGH_MEMORY], 1, [Defined if we've got enough memory to compile z80_ops.c])
-fi
-AC_MSG_RESULT($smallmem)
-
 dnl Do we want lots of warning messages?
 AC_MSG_CHECKING(whether lots of warnings requested)
 AC_ARG_ENABLE(warnings,

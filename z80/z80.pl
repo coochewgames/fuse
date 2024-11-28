@@ -1137,13 +1137,9 @@ sub opcode_shift (@) {
 	PC++; contend_read( PC, 3 );
 	opcode3 = readbyte_internal( PC );
 	contend_read_no_mreq( PC, 1 ); contend_read_no_mreq( PC, 1 ); PC++;
-#ifdef HAVE_ENOUGH_MEMORY
 	switch(opcode3) {
 #include "z80_ddfdcb.c"
 	}
-#else			/* #ifdef HAVE_ENOUGH_MEMORY */
-	z80_ddfdcbxx(opcode3);
-#endif			/* #ifdef HAVE_ENOUGH_MEMORY */
       }
 shift
     } else {
@@ -1153,7 +1149,6 @@ shift
 	contend_read( PC, 4 );
 	opcode2 = readbyte_internal( PC ); PC++;
 	R++;
-#ifdef HAVE_ENOUGH_MEMORY
 	switch(opcode2) {
 shift
 
@@ -1174,9 +1169,6 @@ shift
 
         print << "shift"
 	}
-#else			/* #ifdef HAVE_ENOUGH_MEMORY */
-	if( z80_${lc_opcode}xx(opcode2) ) goto end_opcode;
-#endif			/* #ifdef HAVE_ENOUGH_MEMORY */
       }
 shift
     }
@@ -1286,11 +1278,6 @@ if( $data_file eq 'opcodes_ddfd.dat' ) {
       PC--;
       R--;
       opcode = opcode2;
-#ifdef HAVE_ENOUGH_MEMORY
-      goto end_opcode;
-#else			/* #ifdef HAVE_ENOUGH_MEMORY */
-      return 1;
-#endif			/* #ifdef HAVE_ENOUGH_MEMORY */
 CODE
 
 } elsif( $data_file eq 'opcodes_ed.dat' ) {
