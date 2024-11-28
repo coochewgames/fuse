@@ -51,6 +51,16 @@
 #include "z80.h"
 #include "z80_macros.h"
 
+#include "z80_ops.h"
+
+
+/*
+  PC = Program Counter
+  R = Refresh register
+  Q = Q register
+      In the context of the Z80 emulation, Q is typically used to store the state of the flags that are affected by the last executed instruction. This helps in managing the flag's state across multiple instructions and ensuring that the correct flag values are used when needed.
+      The Q register is reset to 0 after each instruction to prepare for the next instruction's flag updates.
+*/
 
 /* Execute Z80 opcodes until the next event */
 void z80_do_opcodes(void) {
@@ -102,37 +112,41 @@ void z80_do_opcodes(void) {
         if (didaktik80_available) {
             if (PC == 0x0000 || PC == 0x0008) {
                 didaktik80_page();
-            } else if (PC == 0x1700) {
+            } else if (PC == DIDAKTIK80_UNPAGE_ADDR) {
                 didaktik80_unpage();
             }
         }
 
-        if (disciple_available && (PC == 0x0001 || PC == 0x0008 || PC == 0x0066 || PC == 0x028e)) {
+        if (disciple_available && (
+            PC == DISCIPLE_PAGE_ADDR1 ||
+            PC == DISCIPLE_PAGE_ADDR2 ||
+            PC == DISCIPLE_PAGE_ADDR3 ||
+            PC == DISCIPLE_PAGE_ADDR4)) {
             disciple_page();
         }
 
-        if (usource_available && PC == 0x2bae) {
+        if (usource_available && PC == USOURCE_TOGGLE_ADDR) {
             usource_toggle();
         }
 
-        if (multiface_activated && PC == 0x0066) {
+        if (multiface_activated && PC == MULTIFACE_SETIC8_ADDR) {
             multiface_setic8();
         }
 
-        if (if1_available && (PC == 0x0008 || PC == 0x1708)) {
+        if (if1_available && (PC == IF1_PAGE_ADDR1 || PC == IF1_PAGE_ADDR2)) {
             if1_page();
         }
 
-        if (settings_current.divide_enabled && (PC & 0xff00) == 0x3d00) {
+        if (settings_current.divide_enabled && (PC & DIVIDE_AUTOMAP_ADDR_MASK) == DIVIDE_AUTOMAP_ADDR) {
             divide_set_automap(1);
         }
 
-        if (settings_current.divmmc_enabled && (PC & 0xff00) == 0x3d00) {
+        if (settings_current.divmmc_enabled && (PC & DIVMMC_AUTOMAP_ADDR_MASK) == DIVMMC_AUTOMAP_ADDR) {
             divmmc_set_automap(1);
         }
 
         if (spectranet_available && !settings_current.spectranet_disable) {
-            if (PC == 0x0008 || ((PC & 0xfff8) == 0x3ff8)) {
+            if (PC == SPECTRANET_PAGE_ADDR1 || ((PC & SPECTRANET_PAGE_ADDR_MASK) == SPECTRANET_PAGE_ADDR2)) {
                 spectranet_page(0);
             }
             if (PC == spectranet_programmable_trap && spectranet_programmable_trap_active) {
@@ -151,24 +165,24 @@ void z80_do_opcodes(void) {
 
         opcode = readbyte_internal(PC);
 
-        if (if1_available && PC == 0x0700) {
+        if (if1_available && PC == IF1_UNPAGE_ADDR) {
             if1_unpage();
         }
 
         if (settings_current.divide_enabled) {
-            if ((PC & 0xfff8) == 0x1ff8) {
+            if ((PC & DIVIDE_UNPAGE_ADDR_MASK) == DIVIDE_UNPAGE_ADDR) {
                 divide_set_automap(0);
-            } else if (PC == 0x0000 || PC == 0x0008 || PC == 0x0038 || PC == 0x0066 ||
-                       PC == 0x04c6 || PC == 0x0562) {
+            } else if (PC == DIVIDE_PAGE_ADDR1 || PC == DIVIDE_PAGE_ADDR2 || PC == DIVIDE_PAGE_ADDR3 || 
+                      PC == DIVIDE_PAGE_ADDR4 || PC == DIVIDE_PAGE_ADDR5 || PC == DIVIDE_PAGE_ADDR6) {
                 divide_set_automap(1);
             }
         }
 
         if (settings_current.divmmc_enabled) {
-            if ((PC & 0xfff8) == 0x1ff8) {
+            if ((PC & DIVIDE_UNPAGE_ADDR_MASK) == DIVIDE_UNPAGE_ADDR) {
                 divmmc_set_automap(0);
-            } else if (PC == 0x0000 || PC == 0x0008 || PC == 0x0038 || PC == 0x0066 ||
-                       PC == 0x04c6 || PC == 0x0562) {
+            } else if (PC == DIVIDE_PAGE_ADDR1 || PC == DIVIDE_PAGE_ADDR2 || PC == DIVIDE_PAGE_ADDR3 || 
+                      PC == DIVIDE_PAGE_ADDR4 || PC == DIVIDE_PAGE_ADDR5 || PC == DIVIDE_PAGE_ADDR6) {
                 divmmc_set_automap(1);
             }
         }
