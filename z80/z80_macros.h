@@ -18,90 +18,106 @@
 
    Author contact information:
 
-   E-mail: philip-fuse@shadowmagic.org.uk
-
+    Author contact information: philip-fuse@shadowmagic.org.uk
+    Simplication refactoring by Roddy McNeill: rd.mcn@ccgapps.net.au
 */
 
 #ifndef FUSE_Z80_MACROS_H
 #define FUSE_Z80_MACROS_H
 
 /* Macros used for accessing the registers */
-#define A   z80.af.b.h
-#define F   z80.af.b.l
-#define AF  z80.af.w
 
-#define B   z80.bc.b.h
-#define C   z80.bc.b.l
-#define BC  z80.bc.w
+/* Accumulator and Flags register pair */
+#define A   z80.af.b.h  // High byte of AF register pair (Accumulator)
+#define F   z80.af.b.l  // Low byte of AF register pair (Flags)
+#define AF  z80.af.w    // Whole AF register pair
 
-#define D   z80.de.b.h
-#define E   z80.de.b.l
-#define DE  z80.de.w
+/* BC register pair */
+#define B   z80.bc.b.h  // High byte of BC register pair
+#define C   z80.bc.b.l  // Low byte of BC register pair
+#define BC  z80.bc.w    // Whole BC register pair
 
-#define H   z80.hl.b.h
-#define L   z80.hl.b.l
-#define HL  z80.hl.w
+/* DE register pair */
+#define D   z80.de.b.h  // High byte of DE register pair
+#define E   z80.de.b.l  // Low byte of DE register pair
+#define DE  z80.de.w    // Whole DE register pair
 
-#define A_  z80.af_.b.h
-#define F_  z80.af_.b.l
-#define AF_ z80.af_.w
+/* HL register pair */
+#define H   z80.hl.b.h  // High byte of HL register pair
+#define L   z80.hl.b.l  // Low byte of HL register pair
+#define HL  z80.hl.w    // Whole HL register pair
 
-#define B_  z80.bc_.b.h
-#define C_  z80.bc_.b.l
-#define BC_ z80.bc_.w
+/* Alternate Accumulator and Flags register pair */
+#define A_  z80.af_.b.h // High byte of alternate AF register pair (Accumulator)
+#define F_  z80.af_.b.l // Low byte of alternate AF register pair (Flags)
+#define AF_ z80.af_.w   // Whole alternate AF register pair
 
-#define D_  z80.de_.b.h
-#define E_  z80.de_.b.l
-#define DE_ z80.de_.w
+/* Alternate BC register pair */
+#define B_  z80.bc_.b.h // High byte of alternate BC register pair
+#define C_  z80.bc_.b.l // Low byte of alternate BC register pair
+#define BC_ z80.bc_.w   // Whole alternate BC register pair
 
-#define H_  z80.hl_.b.h
-#define L_  z80.hl_.b.l
-#define HL_ z80.hl_.w
+/* Alternate DE register pair */
+#define D_  z80.de_.b.h // High byte of alternate DE register pair
+#define E_  z80.de_.b.l // Low byte of alternate DE register pair
+#define DE_ z80.de_.w   // Whole alternate DE register pair
 
-#define IXH z80.ix.b.h
-#define IXL z80.ix.b.l
-#define IX  z80.ix.w
+/* Alternate HL register pair */
+#define H_  z80.hl_.b.h // High byte of alternate HL register pair
+#define L_  z80.hl_.b.l // Low byte of alternate HL register pair
+#define HL_ z80.hl_.w   // Whole alternate HL register pair
 
-#define IYH z80.iy.b.h
-#define IYL z80.iy.b.l
-#define IY  z80.iy.w
+/* IX index register */
+#define IXH z80.ix.b.h  // High byte of IX register
+#define IXL z80.ix.b.l  // Low byte of IX register
+#define IX  z80.ix.w    // Whole IX register
 
-#define SPH z80.sp.b.h
-#define SPL z80.sp.b.l
-#define SP  z80.sp.w
+/* IY index register */
+#define IYH z80.iy.b.h  // High byte of IY register
+#define IYL z80.iy.b.l  // Low byte of IY register
+#define IY  z80.iy.w    // Whole IY register
 
-#define PCH z80.pc.b.h
-#define PCL z80.pc.b.l
-#define PC  z80.pc.w
+/* Stack Pointer register */
+#define SPH z80.sp.b.h  // High byte of SP register
+#define SPL z80.sp.b.l  // Low byte of SP register
+#define SP  z80.sp.w    // Whole SP register
 
-#define I  z80.i
-#define R  z80.r
-#define R7 z80.r7
+/* Program Counter register */
+#define PCH z80.pc.b.h  // High byte of PC register
+#define PCL z80.pc.b.l  // Low byte of PC register
+#define PC  z80.pc.w    // Whole PC register
 
-#define CLOCKH  z80.clockh
-#define CLOCKL  z80.clockl
+/* Interrupt and Refresh registers */
+#define I  z80.i        // Interrupt register
+#define R  z80.r        // Refresh register
+#define R7 z80.r7       // 7th bit of the Refresh register
 
-#define IFF1 z80.iff1
-#define IFF2 z80.iff2
-#define IM   z80.im
+/* Clock registers */
+#define CLOCKH  z80.clockh // High byte of clock register
+#define CLOCKL  z80.clockl // Low byte of clock register
 
+/* Interrupt Flip-Flops */
+#define IFF1 z80.iff1   // Interrupt Flip-Flop 1
+#define IFF2 z80.iff2   // Interrupt Flip-Flop 2
+#define IM   z80.im     // Interrupt Mode
+
+// Combined Interrupt and Refresh register
 #define IR ( ( z80.i ) << 8 | ( z80.r7 & 0x80 ) | ( z80.r & 0x7f ) )
 
-#define IS_CMOS settings_current.z80_is_cmos
+#define IS_CMOS settings_current.z80_is_cmos  // CMOS flag
 
-#define Q z80.q
+#define Q z80.q  // Q register, used to store the state of flags affected by the last executed instruction
 
-/* The flags */
-
-#define FLAG_C	0x01
-#define FLAG_N	0x02
-#define FLAG_P	0x04
-#define FLAG_V	FLAG_P
-#define FLAG_3	0x08
-#define FLAG_H	0x10
-#define FLAG_5	0x20
-#define FLAG_Z	0x40
-#define FLAG_S	0x80
+// The flags
+#define FLAG_C  0x01    // Carry flag
+#define FLAG_N  0x02    // Add/Subtract flag
+#define FLAG_P  0x04    // Parity/Overflow flag
+#define FLAG_V  FLAG_P  // Overflow flag (same as Parity flag)
+#define FLAG_3  0x08    // Bit 3 of the result (undocumented flag)
+#define FLAG_H  0x10    // Half Carry flag
+#define FLAG_5  0x20    // Bit 5 of the result (undocumented flag)
+#define FLAG_Z  0x40    // Zero flag
+#define FLAG_S  0x80    // Sign flag
 
 /* Get the appropriate contended memory delay. Use a macro for performance
    reasons in the main core, but a function for flexibility when building
