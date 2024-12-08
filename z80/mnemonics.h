@@ -39,7 +39,16 @@ typedef enum {
     RRC,    // Rotate right circular
     BIT,    // Test bit
     RES,    // Reset bit
-    SET     // Set bit
+    SET,    // Set bit
+    EX,     // Exchange
+    RRCA,   // Rotate right circular accumulator
+    DJNZ,   // Decrement and jump if not zero
+    ADC,    // Add with carry
+    SBC,    // Subtract with carry
+    RST,    // Restart
+    OUT,    // Output
+    EXX,    // Exchange registers
+    IN      // Input
 } Z80_MNEMONIC;
 
 

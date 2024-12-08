@@ -23,7 +23,7 @@
 fuse_SOURCES += \
                 z80/z80.c \
                 z80/z80_debugger_variables.c \
-                z80/z80_ops.c
+                z80/process_z80_opcodes.c
 
 BUILT_SOURCES += \
                  z80/opcodes_base.c \
@@ -85,8 +85,8 @@ z80_coretest_CPPFLAGS = $(GLIB_CFLAGS) $(LIBSPECTRUM_CFLAGS) -DCORETEST
 z80/coretest.o: $(srcdir)/z80/coretest.c
 	$(AM_V_CC)$(COMPILE) -DCORETEST -c $(srcdir)/z80/coretest.c -o $@
 
-z80/z80_coretest.o: z80/z80_ops.c
-	$(AM_V_CC)$(COMPILE) -DCORETEST -c $(srcdir)/z80/z80_ops.c -o $@
+z80/z80_coretest.o: z80/process_z80_opcodes.c
+	$(AM_V_CC)$(COMPILE) -DCORETEST -c $(srcdir)/z80/process_z80_opcodes.c -o $@
 
 test: z80/coretest
 	z80/coretest $(srcdir)/z80/tests/tests.in > z80/tests.actual

@@ -1,5 +1,5 @@
 /*
-    z80_ops.h: Some commonly used z80 things as macros
+    process_z80_opcodes.h: Some commonly used z80 things as macros
 
     Copyright (c) 1999-2011 Philip Kendall
     Copyright (c) 2015 Stuart Brady

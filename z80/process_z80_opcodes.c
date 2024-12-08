@@ -51,7 +51,7 @@
 #include "z80.h"
 #include "z80_macros.h"
 
-#include "z80_ops.h"
+#include "process_z80_opcodes.h"
 
 
 /*

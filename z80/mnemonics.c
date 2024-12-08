@@ -5,42 +5,51 @@
 
 const char *getMnemonicName(Z80_MNEMONIC mnemonic) {
     switch (mnemonic) {
-        case NOP: return "NOP";       // No operation
-        case LD: return "LD";         // Load
-        case INC: return "INC";       // Increment
-        case DEC: return "DEC";       // Decrement
-        case RLCA: return "RLCA";     // Rotate left circular accumulator
-        case ADD: return "ADD";       // Add
-        case SUB: return "SUB";       // Subtract
-        case AND: return "AND";       // Logical AND
-        case OR: return "OR";         // Logical OR
-        case XOR: return "XOR";       // Logical XOR
-        case CP: return "CP";         // Compare
-        case JP: return "JP";         // Jump
-        case JR: return "JR";         // Jump relative
-        case CALL: return "CALL";     // Call subroutine
-        case RET: return "RET";       // Return from subroutine
-        case PUSH: return "PUSH";     // Push onto stack
-        case POP: return "POP";       // Pop from stack
-        case RLA: return "RLA";       // Rotate left accumulator
-        case RRA: return "RRA";       // Rotate right accumulator
-        case DAA: return "DAA";       // Decimal adjust accumulator
-        case CPL: return "CPL";       // Complement accumulator
-        case SCF: return "SCF";       // Set carry flag
-        case CCF: return "CCF";       // Complement carry flag
-        case HALT: return "HALT";     // Halt
-        case DI: return "DI";         // Disable interrupts
-        case EI: return "EI";         // Enable interrupts
-        case RL: return "RL";         // Rotate left
-        case RR: return "RR";         // Rotate right
-        case SLA: return "SLA";       // Shift left arithmetic
-        case SRA: return "SRA";       // Shift right arithmetic
-        case SRL: return "SRL";       // Shift right logical
-        case RLC: return "RLC";       // Rotate left circular
-        case RRC: return "RRC";       // Rotate right circular
-        case BIT: return "BIT";       // Test bit
-        case RES: return "RES";       // Reset bit
-        case SET: return "SET";       // Set bit
+        case NOP: return "NOP";
+        case LD: return "LD";
+        case INC: return "INC";
+        case DEC: return "DEC";
+        case RLCA: return "RLCA";
+        case ADD: return "ADD";
+        case SUB: return "SUB";
+        case AND: return "AND";
+        case OR: return "OR";
+        case XOR: return "XOR";
+        case CP: return "CP";
+        case JP: return "JP";
+        case JR: return "JR";
+        case CALL: return "CALL";
+        case RET: return "RET";
+        case PUSH: return "PUSH";
+        case POP: return "POP";
+        case RLA: return "RLA";
+        case RRA: return "RRA";
+        case DAA: return "DAA";
+        case CPL: return "CPL";
+        case SCF: return "SCF";
+        case CCF: return "CCF";
+        case HALT: return "HALT";
+        case DI: return "DI";
+        case EI: return "EI";
+        case RL: return "RL";
+        case RR: return "RR";
+        case SLA: return "SLA";
+        case SRA: return "SRA";
+        case SRL: return "SRL";
+        case RLC: return "RLC";
+        case RRC: return "RRC";
+        case BIT: return "BIT";
+        case RES: return "RES";
+        case SET: return "SET";
+        case EX: return "EX";
+        case RRCA: return "RRCA";
+        case DJNZ: return "DJNZ";
+        case ADC: return "ADC";
+        case SBC: return "SBC";
+        case RST: return "RST";
+        case OUT: return "OUT";
+        case EXX: return "EXX";
+        case IN: return "IN";
         default: return "UNKNOWN";    // Unknown mnemonic
     }
 }
@@ -82,6 +91,15 @@ Z80_MNEMONIC getMnemonicEnum(const char *mnemonic) {
     if (strcmp(mnemonic, "BIT") == 0) return BIT;
     if (strcmp(mnemonic, "RES") == 0) return RES;
     if (strcmp(mnemonic, "SET") == 0) return SET;
+    if (strcmp(mnemonic, "EX") == 0) return EX;
+    if (strcmp(mnemonic, "RRCA") == 0) return RRCA;
+    if (strcmp(mnemonic, "DJNZ") == 0) return DJNZ;
+    if (strcmp(mnemonic, "ADC") == 0) return ADC;
+    if (strcmp(mnemonic, "SBC") == 0) return SBC;
+    if (strcmp(mnemonic, "RST") == 0) return RST;
+    if (strcmp(mnemonic, "OUT") == 0) return OUT;
+    if (strcmp(mnemonic, "EXX") == 0) return EXX;
+    if (strcmp(mnemonic, "IN") == 0) return IN;
 
     return UNKNOWN_MNEMONIC;
 }
