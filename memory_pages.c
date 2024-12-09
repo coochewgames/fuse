@@ -514,6 +514,33 @@ writebyte_internal( libspectrum_word address, libspectrum_byte b )
 }
 
 void
+perform_contend_read(libspectrum_word address, time_t time) {
+    if (memory_map_read[(address) >> MEMORY_PAGE_SIZE_LOGARITHM].contended) {
+        tstates += ula_contention[tstates];
+    }
+
+    tstates += (time);
+}
+
+void
+perform_contend_read_no_mreq(libspectrum_word address, time_t time) {
+    if (memory_map_read[(address) >> MEMORY_PAGE_SIZE_LOGARITHM ].contended ) {
+        tstates += ula_contention_no_mreq[tstates];
+    }
+
+    tstates += (time);
+}
+
+void
+perform_contend_write_no_mreq(libspectrum_word address, time_t time) {
+    if (memory_map_write[ (address) >> MEMORY_PAGE_SIZE_LOGARITHM ].contended) {
+        tstates += ula_contention_no_mreq[tstates];
+    }
+
+    tstates += (time);
+}
+
+void
 memory_romcs_map( void )
 {
   /* Nothing changes if /ROMCS is not set */

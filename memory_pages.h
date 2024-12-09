@@ -25,6 +25,7 @@
 #ifndef FUSE_MEMORY_PAGES_H
 #define FUSE_MEMORY_PAGES_H
 
+#include <time.h>
 #include "libspectrum.h"
 
 /* Register a new memory source */
@@ -191,6 +192,9 @@ libspectrum_byte readbyte_internal( libspectrum_word address );
 
 void writebyte( libspectrum_word address, libspectrum_byte b );
 void writebyte_internal( libspectrum_word address, libspectrum_byte b );
+void perform_contend_read(libspectrum_word address, time_t time);
+void perform_contend_read_no_mreq(libspectrum_word address, time_t time);
+void perform_contend_write_no_mreq(libspectrum_word address, time_t time);
 
 typedef void (*memory_display_dirty_fn)( libspectrum_word address,
                                          libspectrum_byte b );
