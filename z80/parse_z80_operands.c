@@ -15,6 +15,10 @@ libspectrum_byte get_DD_value(void) {
 	return readbyte( z80.memptr.w );
 }
 
+/*
+ *  This will retrieve the value of a byte operand;
+ *  the operand can be a register or a literal hex value.
+ */
 libspectrum_byte get_byte_value(char *operand) {
     libspectrum_byte value = 0;
 
@@ -27,6 +31,9 @@ libspectrum_byte get_byte_value(char *operand) {
     return value;
 }
 
+/*
+ *  Use the macro for a byte register from the character name.
+ */
 libspectrum_byte get_reg_byte_value(char reg) {
     libspectrum_byte value = 0;
 
@@ -63,6 +70,9 @@ libspectrum_byte get_reg_byte_value(char reg) {
     return value;
 }
 
+/*
+ *  Use the macro for a word register from the string name.
+ */
 libspectrum_word get_reg_word_value(const char *reg) {
     libspectrum_word value = 0;
 
@@ -87,6 +97,9 @@ libspectrum_word get_reg_word_value(const char *reg) {
     return value;
 }
 
+/*
+ *  Parase an address operand, which can be a double register, a literal address or an indirect address that may have an offset.
+ */
 ADDRESS_OPERAND parse_address_operand(const char *operand) {
     ADDRESS_OPERAND result = { false, "", 0, 0 };
     char *open_parenthesis = strchr(operand, '(');
@@ -130,6 +143,9 @@ ADDRESS_OPERAND parse_address_operand(const char *operand) {
     return result;
 }
 
+/*
+ *  Perform a read contention without a memory request for a number of iterations.
+ */
 void perform_contend_read_no_mreq_iterations(libspectrum_word address, int iterations) {
     for(int i = 0; i < iterations; i++) {
         perform_contend_read_no_mreq(address, 1);
