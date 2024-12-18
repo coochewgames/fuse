@@ -4,6 +4,7 @@
 #include <errno.h>
 
 #include "read_ops_from_dat_file.h"
+#include "../logging.h"
 
 static const int MAX_LINE_LENGTH = 50;
 static const int MAX_MNEMONIC_LENGTH = 10;
@@ -21,7 +22,7 @@ bool readOpcodes(const char *filename) {
     int line_count = 0;
 
     if (!file) {
-        fprintf(stderr, "Failed to open file '%s': %s\n", filename, strerror(errno));
+        ERROR("Failed to open file '%s': %s", filename, strerror(errno));
         return false;
     }
 
@@ -31,7 +32,7 @@ bool readOpcodes(const char *filename) {
     while (fgets(line, sizeof(line), file)) {
         line_count++;
 
-        if (strlen(line) > 0 && line[0] == '#') {
+        if (strlen(line) == 0 || line[0] == '#'|| line[0] == '\n') {
             continue;
         }
 
@@ -45,14 +46,14 @@ bool readOpcodes(const char *filename) {
         int numFields = sscanf(line, "%x %s %s %s", &id, mnemonic, operands, extras);
 
         if (numFields < 2) {
-            fprintf(stderr, "Invalid line format at line %d: %s", line_count, line);
+            ERROR("Invalid line format at line %d: %s", line_count, line);
             continue;
         }
 
         Z80_MNEMONIC op = getMnemonicEnum(mnemonic);
 
         if (op == UNKNOWN_MNEMONIC) {
-            fprintf(stderr, "Unknown mnemonic found at line %d: %s\n", line_count, mnemonic);
+            ERROR("Unknown mnemonic found at line %d: %s", line_count, mnemonic);
             continue;
         }
 
@@ -74,11 +75,9 @@ bool readOpcodes(const char *filename) {
         opcode.op = op;
         strncpy(opcode.operand_1, operand1, MAX_OPERAND_LENGTH);
         strncpy(opcode.operand_2, operand2, MAX_OPERAND_LENGTH);
-
-        opcode.operation = NULL; // Set to NULL or appropriate function pointer
+        strncpy(opcode.extras, extras, MAX_OPERAND_LENGTH);
 
         if (addOpcode(&capacity, opcode) == false) {
-            free(opcodes);
             fclose(file);
 
             return false;
@@ -90,20 +89,26 @@ bool readOpcodes(const char *filename) {
 }
 
 static bool addOpcode(int *capacity, Z80_OP opcode) {
-    if (numOpcodes >= *capacity) {
-        (*capacity) += INITIAL_CAPACITY;
+    if (numOpcodes != opcode.id) {
+        WARNING("Invalid opcode ID (0x%02X %s) found at array position %d", opcode.id, getMnemonicName(opcode.op), numOpcodes);
+    }
+
+    if (opcode.id >= *capacity) {
+        (*capacity) = opcode.id + INITIAL_CAPACITY;
 
         Z80_OP *newOpcodes = (Z80_OP *)realloc(opcodes, (*capacity) * sizeof(Z80_OP));
 
         if (!newOpcodes) {
-            perror("Failed to reallocate memory");
+            FATAL("Failed to reallocate memory");
             return false;
         }
         
         opcodes = newOpcodes;
     }
 
-    opcodes[numOpcodes++] = opcode;
+    opcodes[(int)opcode.id] = opcode;
+    numOpcodes = opcode.id + 1;
+
     return true;
 }
 
@@ -112,7 +117,7 @@ int main() {
     const char *filename = "opcodes_base.dat";
     int result = readOpcodes(filename);
 
-    if (result > 0) {
+    if (result == true) {
         printf("Successfully read %d opcodes.\n", numOpcodes);
 
         for (int i = 0; i < numOpcodes; i++) {

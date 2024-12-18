@@ -12,8 +12,7 @@ typedef struct {
     Z80_MNEMONIC op;
     char operand_1[MAX_OPERAND_LENGTH];
     char operand_2[MAX_OPERAND_LENGTH];
-
-    void (*operation)(void);
+    char extras[MAX_OPERAND_LENGTH];
 } Z80_OP;
 
 bool readOpcodes(const char *filename);

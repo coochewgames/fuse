@@ -1,9 +1,10 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "logging.h"
 
 
-void log(const char *filename, unsigned int line, const char *function, const char *level, const char *message, ...) {
+void log_message(const char *filename, unsigned int line, const char *function, const char *level, const char *message, ...) {
     va_list args;
     va_start(args, message);
 
