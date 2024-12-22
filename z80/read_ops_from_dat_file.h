@@ -2,14 +2,19 @@
 #define READ_OPS_FROM_DAT_FILE_H
 
 #include <stdbool.h>
+#include <libspectrum.h>
 
 #include "mnemonics.h"
+#include "execute_z80_opcode.h"
 
 #define MAX_OPERAND_LENGTH 7
 
 typedef struct {
     unsigned char id;
+
     Z80_MNEMONIC op;
+    Z80_OP_FUNC_LOOKUP op_func_lookup;
+
     char operand_1[MAX_OPERAND_LENGTH];
     char operand_2[MAX_OPERAND_LENGTH];
     char extras[MAX_OPERAND_LENGTH];

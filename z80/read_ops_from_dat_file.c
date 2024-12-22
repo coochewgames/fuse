@@ -73,6 +73,8 @@ bool readOpcodes(const char *filename) {
 
         opcode.id = (unsigned char)id;
         opcode.op = op;
+        opcode.op_func_lookup = z80_op_func_lookup(op);
+
         strncpy(opcode.operand_1, operand1, MAX_OPERAND_LENGTH);
         strncpy(opcode.operand_2, operand2, MAX_OPERAND_LENGTH);
         strncpy(opcode.extras, extras, MAX_OPERAND_LENGTH);
