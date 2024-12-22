@@ -2,18 +2,16 @@
 #include <libspectrum.h>
 
 #include "z80.h"
-#include "spectrum.h"
 #include "z80_macros.h"
 #include "../memory_pages.h"
-#include "../peripherals/ula.h"
 
 #include "parse_z80_operands.h"
 #include "execute_z80_opcode.h"
+#include "execute_z80_command.h"
 #include "logging.h"
 
 
 static void arithmetic_logical(char *opcode, char *operand_1, char *operand_2);
-static void op_ADD16(libspectrum_dword value1, libspectrum_dword value2);
 
 
 /*
@@ -41,31 +39,6 @@ Z80_OP_FUNC_LOOKUP z80_op_func_lookup(Z80_MNEMONIC op) {
     }
 
     return lookup;
-}
-
-void op_ADC(libspectrum_byte value) {
-    libspectrum_word adctemp = A + value + ( F & FLAG_C );
-    libspectrum_byte lookup = ( (A & 0x88) >> 3 ) | ( (value & 0x88 ) >> 2 ) | ( (adctemp & 0x88) >> 1 );
-
-    A = adctemp;
-    F = ( (adctemp & 0x100) ? FLAG_C : 0 ) |
-        halfcarry_add_table[lookup & 0x07] |
-        overflow_add_table[lookup >> 4] |
-        sz53_table[A];
-
-    Q = F;
-}
-
-void op_ADD(libspectrum_byte value) {
-    libspectrum_word addtemp = A + value;
-    libspectrum_byte lookup = ( (A & 0x88) >> 3 ) | ( (value & 0x88 ) >> 2 ) | ( (addtemp & 0x88) >> 1 );
-
-    A = addtemp;
-    F = ( (addtemp & 0x100) ? FLAG_C : 0 ) |
-        halfcarry_add_table[lookup & 0x07] | overflow_add_table[lookup >> 4] |
-        sz53_table[A];
-
-    Q = F;
 }
 
 static void arithmetic_logical(char *opcode, char *operand_1, char *operand_2) {
@@ -113,33 +86,12 @@ static void arithmetic_logical(char *opcode, char *operand_1, char *operand_2) {
             } else {
                 libspectrum_word operand_2_value = get_reg_word_value(operand_2);
 
-                //  Example for an opcode: op_ADD16(operand_1_value, operand_2_value);
+                //  Example for an opcode: _ADD16(operand_1_value, operand_2_value);
             }
         } else {
-            //  Example for an opcode: op_<opcode>16(operand_1_value);
+            //  Example for an opcode: _<opcode>16(operand_1_value);
         }
     } else {
         ERROR("Unexpected operand 1 found: %s", operand_1);
     }
-}
-
-/*
- *  This function is used to add two 16-bit values together; the 16 bit register values
- *  are always represented by two 8-bit registers concatenated together.
- */
-static void op_ADD16(libspectrum_dword value1, libspectrum_dword value2) {
-    libspectrum_dword add16temp = value1 + value2;
-    libspectrum_byte lookup = ( (value1 & 0x0800) >> 11 ) |
-        ( (value2 & 0x0800 ) >> 10 ) |
-        ( (add16temp & 0x0800) >>  9 );
-
-    z80.memptr.w = value1 + 1;
-    value1 = add16temp;
-
-    F = ( F & (FLAG_V | FLAG_Z | FLAG_S) ) |
-        ( (add16temp & 0x10000) ? FLAG_C : 0 )|
-        ( (add16temp >> 8) & ( FLAG_3 | FLAG_5 ) ) |
-        halfcarry_add_table[lookup];
-
-    Q = F;
 }
