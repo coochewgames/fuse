@@ -50,7 +50,7 @@ bool readOpcodes(const char *filename) {
             continue;
         }
 
-        Z80_MNEMONIC op = getMnemonicEnum(mnemonic);
+        Z80_MNEMONIC op = get_mnemonic_enum(mnemonic);
 
         if (op == UNKNOWN_MNEMONIC) {
             ERROR("Unknown mnemonic found at line %d: %s", line_count, mnemonic);
@@ -73,7 +73,7 @@ bool readOpcodes(const char *filename) {
 
         opcode.id = (unsigned char)id;
         opcode.op = op;
-        opcode.op_func_lookup = z80_op_func_lookup(op);
+        opcode.op_func_lookup = get_z80_op_func(op);
 
         strncpy(opcode.operand_1, operand1, MAX_OPERAND_LENGTH);
         strncpy(opcode.operand_2, operand2, MAX_OPERAND_LENGTH);
@@ -92,7 +92,7 @@ bool readOpcodes(const char *filename) {
 
 static bool addOpcode(int *capacity, Z80_OP opcode) {
     if (numOpcodes != opcode.id) {
-        WARNING("Invalid opcode ID (0x%02X %s) found at array position %d", opcode.id, getMnemonicName(opcode.op), numOpcodes);
+        WARNING("Invalid opcode ID (0x%02X %s) found at array position %d", opcode.id, get_mnemonic_name(opcode.op), numOpcodes);
     }
 
     if (opcode.id >= *capacity) {

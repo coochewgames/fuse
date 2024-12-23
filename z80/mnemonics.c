@@ -3,7 +3,7 @@
 #include "mnemonics.h"
 
 
-const char *getMnemonicName(Z80_MNEMONIC mnemonic) {
+const char *get_mnemonic_name(Z80_MNEMONIC mnemonic) {
     switch (mnemonic) {
         case NOP: return "NOP";
         case LD: return "LD";
@@ -50,11 +50,27 @@ const char *getMnemonicName(Z80_MNEMONIC mnemonic) {
         case OUT: return "OUT";
         case EXX: return "EXX";
         case IN: return "IN";
+        case LDI: return "LDI";
+        case CPI: return "CPI";
+        case INI: return "INI";
+        case OUTI: return "OUTI";
+        case LDD: return "LDD";
+        case CPD: return "CPD";
+        case IND: return "IND";
+        case OUTD: return "OUTD";
+        case LDIR: return "LDIR";
+        case CPIR: return "CPIR";
+        case INIR: return "INIR";
+        case OTIR: return "OTIR";
+        case LDDR: return "LDDR";
+        case CPDR: return "CPDR";
+        case INDR: return "INDR";
+        case OTDR: return "OTDR";
         default: return "UNKNOWN";    // Unknown mnemonic
     }
 }
 
-Z80_MNEMONIC getMnemonicEnum(const char *mnemonic) {
+Z80_MNEMONIC get_mnemonic_enum(const char *mnemonic) {
     if (strcmp(mnemonic, "NOP") == 0) return NOP;
     if (strcmp(mnemonic, "LD") == 0) return LD;
     if (strcmp(mnemonic, "INC") == 0) return INC;
@@ -100,6 +116,22 @@ Z80_MNEMONIC getMnemonicEnum(const char *mnemonic) {
     if (strcmp(mnemonic, "OUT") == 0) return OUT;
     if (strcmp(mnemonic, "EXX") == 0) return EXX;
     if (strcmp(mnemonic, "IN") == 0) return IN;
-
+    if (strcmp(mnemonic, "LDI") == 0) return LDI;
+    if (strcmp(mnemonic, "CPI") == 0) return CPI;
+    if (strcmp(mnemonic, "INI") == 0) return INI;
+    if (strcmp(mnemonic, "OUTI") == 0) return OUTI;
+    if (strcmp(mnemonic, "LDD") == 0) return LDD;
+    if (strcmp(mnemonic, "CPD") == 0) return CPD;
+    if (strcmp(mnemonic, "IND") == 0) return IND;
+    if (strcmp(mnemonic, "OUTD") == 0) return OUTD;
+    if (strcmp(mnemonic, "LDIR") == 0) return LDIR;
+    if (strcmp(mnemonic, "CPIR") == 0) return CPIR;
+    if (strcmp(mnemonic, "INIR") == 0) return INIR;
+    if (strcmp(mnemonic, "OTIR") == 0) return OTIR;
+    if (strcmp(mnemonic, "LDDR") == 0) return LDDR;
+    if (strcmp(mnemonic, "CPDR") == 0) return CPDR;
+    if (strcmp(mnemonic, "INDR") == 0) return INDR;
+    if (strcmp(mnemonic, "OTDR") == 0) return OTDR;
+    
     return UNKNOWN_MNEMONIC;
 }

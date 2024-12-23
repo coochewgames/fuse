@@ -101,6 +101,11 @@
 #define IFF2 z80.iff2   // Interrupt Flip-Flop 2
 #define IM   z80.im     // Interrupt Mode
 
+/* Memory pointer */
+#define MEMPTR_H z80.memptr.b.h   // High byte of the memory pointer register
+#define MEMPTR_L z80.memptr.b.l   // Low byte of the memory pointer register
+#define MEMPTR_W z80.memptr.w     // Whole memory pointer register
+
 // Combined Interrupt and Refresh register
 #define IR ( ( z80.i ) << 8 | ( z80.r7 & 0x80 ) | ( z80.r & 0x7f ) )
 
