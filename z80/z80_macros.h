@@ -124,6 +124,16 @@
 #define FLAG_Z  0x40    // Zero flag
 #define FLAG_S  0x80    // Sign flag
 
+// Bits
+#define BIT_0  0x01
+#define BIT_1  0x02
+#define BIT_2  0x04
+#define BIT_3  0x08
+#define BIT_4  0x10
+#define BIT_5  0x20
+#define BIT_6  0x40
+#define BIT_7  0x80
+
 /* Get the appropriate contended memory delay. Use a macro for performance
    reasons in the main core, but a function for flexibility when building
    the core tester */

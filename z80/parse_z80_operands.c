@@ -11,8 +11,8 @@ libspectrum_byte get_DD_value(void) {
     perform_contend_read_no_mreq_iterations(PC, 5);
 
     PC++;
-	z80.memptr.w = IX + (libspectrum_signed_byte)offset;  // IX is a 16-bit register used by DD prefixed instructions
-	return readbyte( z80.memptr.w );
+	MEMPTR_W = IX + (libspectrum_signed_byte)offset;  // IX is a 16-bit register used by DD prefixed instructions
+	return readbyte(MEMPTR_W);
 }
 
 /*
@@ -23,7 +23,7 @@ libspectrum_byte get_byte_value(char *operand) {
     libspectrum_byte value = 0;
 
     if (strlen(operand) == 1) {
-        value = get_reg_byte_value(operand[0]);
+        value = get_byte_reg_value(operand[0]);
     } else {
         value = (libspectrum_byte)strtol(operand, NULL, 16);
     }
@@ -34,7 +34,7 @@ libspectrum_byte get_byte_value(char *operand) {
 /*
  *  Use the macro for a byte register from the character name.
  */
-libspectrum_byte get_reg_byte_value(char reg) {
+libspectrum_byte get_byte_reg_value(char reg) {
     libspectrum_byte value = 0;
 
     switch (reg) {
@@ -70,10 +70,46 @@ libspectrum_byte get_reg_byte_value(char reg) {
     return value;
 }
 
+libspectrum_byte *get_byte_reg(char reg) {
+    libspectrum_byte *value = NULL;
+
+    switch (reg) {
+        case 'A':
+            value = &A;
+            break;
+        case 'F':
+            value = &F;
+            break;
+        case 'B':
+            value = &B;
+            break;
+        case 'C':
+            value = &C;
+            break;
+        case 'D':
+            value = &D;
+            break;
+        case 'E':
+            value = &E;
+            break;
+        case 'H':
+            value = &H;
+            break;
+        case 'L':
+            value = &L;
+            break;
+        default:
+            ERROR("Unexpected byte register found: %c", reg);
+            break;
+        }
+
+    return value;
+}
+
 /*
  *  Use the macro for a word register from the string name.
  */
-libspectrum_word get_reg_word_value(const char *reg) {
+libspectrum_word get_word_reg_value(const char *reg) {
     libspectrum_word value = 0;
 
     if (strcmp(reg, "AF") == 0) {
@@ -90,6 +126,30 @@ libspectrum_word get_reg_word_value(const char *reg) {
         value = IY;
     } else if (strcmp(reg, "SP") == 0) {
         value = SP;
+    } else {
+        ERROR("Unexpected word register found: %s", reg);
+    }
+
+    return value;
+}
+
+libspectrum_word *get_word_reg(const char *reg) {
+    libspectrum_word *value = NULL;
+
+    if (strcmp(reg, "AF") == 0) {
+        value = &AF;
+    } else if (strcmp(reg, "BC") == 0) {
+        value = &BC;
+    } else if (strcmp(reg, "DE") == 0) {
+        value = &DE;
+    } else if (strcmp(reg, "HL") == 0) {
+        value = &HL;
+    } else if (strcmp(reg, "IX") == 0) {
+        value = &IX;
+    } else if (strcmp(reg, "IY") == 0) {
+        value = &IY;
+    } else if (strcmp(reg, "SP") == 0) {
+        value = &SP;
     } else {
         ERROR("Unexpected word register found: %s", reg);
     }

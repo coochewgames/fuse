@@ -165,7 +165,7 @@ static void arithmetic_logical(Z80_MNEMONIC op, const char *operand_1, const cha
             WARNING("Unexpected operand 2 found for %s: %s", get_mnemonic_name(op), operand_2);
         }
 
-        libspectrum_word operand_1_value = get_reg_word_value(operand_1);
+        libspectrum_word operand_1_value = get_word_reg_value(operand_1);
 
         perform_contend_read_no_mreq_iterations(IR, 7);
 
@@ -174,7 +174,7 @@ static void arithmetic_logical(Z80_MNEMONIC op, const char *operand_1, const cha
                 if (strlen(operand_2) != 2) {
                     WARNING("Unexpected register in operand 2 found for ADD: %s", operand_2);
                 } else {
-                    _ADD16(operand_1_value, get_reg_word_value(operand_2));
+                    _ADD16(operand_1_value, get_word_reg_value(operand_2));
                 }
                 break;
             case ADC:
@@ -214,6 +214,90 @@ static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_
         }
     } else {
         PC++;
+    }
+}
+
+static void cpi_cpd(Z80_MNEMONIC op) {
+	libspectrum_byte value = readbyte(HL);
+    libspectrum_byte bytetemp = A - value;
+    libspectrum_byte lookup;
+    int modifier = (op == CPI) ? 1 : -1;
+
+    lookup = ( (A & FLAG_3) >> 3 ) |
+        ( (value & FLAG_3) >> 2 ) |
+        ( (bytetemp & FLAG_3) >> 1 );
+
+    for (int i = 0; i < 5; i++) {
+        perform_contend_read_no_mreq(HL, 1);
+    }
+
+    HL += modifier;
+	BC--;
+
+	F = ( F & FLAG_C ) |
+        ( BC ? (FLAG_V | FLAG_N) : FLAG_N ) |
+	    halfcarry_sub_table[lookup] |
+        ( bytetemp ? 0 : FLAG_Z ) |
+	    ( bytetemp & FLAG_S );
+
+	if (F & FLAG_H) {
+        bytetemp--;
+    }
+
+	F |= ( bytetemp & FLAG_3 ) | ( (bytetemp & BIT_1) ? FLAG_5 : 0 );
+	Q = F;
+
+    MEMPTR_W += modifier;
+}
+
+static void cpir_cpdr(Z80_MNEMONIC op) {
+    libspectrum_byte value = readbyte(HL);
+    libspectrum_byte bytetemp = A - value;
+    libspectrum_byte lookup;
+    int modifier = (op == CPIR) ? 1 : -1;
+
+    lookup = ( (A & FLAG_3) >> 3 ) |
+        ( (value & FLAG_3) >> 2 ) |
+        ( (bytetemp & FLAG_3) >> 1 );
+
+    for (int i = 0; i < 5; i++) {
+        perform_contend_read_no_mreq(HL, 1);
+    }
+
+	BC--;
+	F = ( F & FLAG_C ) |
+        ( BC ? (FLAG_V | FLAG_N) : FLAG_N ) |
+	    halfcarry_sub_table[lookup] |
+        ( bytetemp ? 0 : FLAG_Z ) |
+	    ( bytetemp & FLAG_S );
+
+	if (F & FLAG_H) {
+        bytetemp--;
+    }
+
+	F |= ( bytetemp & FLAG_3 ) | ( (bytetemp & BIT_1) ? FLAG_5 : 0 );
+	Q = F;
+
+	if( ( F & ( FLAG_V | FLAG_Z ) ) == FLAG_V ) {
+        for (int i = 0; i < 5; i++) {
+            perform_contend_read_no_mreq(HL, 1);
+        }
+
+        PC -= 2;
+	    MEMPTR_W = PC + 1;
+	} else {
+        MEMPTR_W += modifier;
+	}
+
+    HL += modifier;
+}
+
+
+static void inc_dec(Z80_MNEMONIC op, const char *operand) {
+    int modifier = (op == INC) ? 1 : -1;
+
+    if (strlen(operand) == 1) {
+        _INC(get_byte_reg(operand));
     }
 }
 

@@ -7,7 +7,12 @@
 #include "mnemonics.h"
 #include "execute_z80_opcode.h"
 
-#define MAX_OPERAND_LENGTH 7
+/*
+ *  These can consist of larger strings than the actual operand
+ *  but the operand should be at least 1 character long.
+ *  eg. "(REGISTER+dd)" or "REGISTERH" are valid operands.
+ */
+#define MAX_OPERAND_LENGTH 15
 
 typedef struct {
     unsigned char id;
