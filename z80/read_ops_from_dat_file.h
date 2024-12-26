@@ -25,9 +25,11 @@ typedef struct {
     char extras[MAX_OPERAND_LENGTH];
 } Z80_OP;
 
-bool readOpcodes(const char *filename);
+typedef struct {
+    int num_op_codes;
+    Z80_OP *op_codes;
+} Z80_OPS;
 
-extern Z80_OP *opcodes;
-extern int numOpcodes;
+Z80_OPS read_op_codes(const char *filename);
 
 #endif

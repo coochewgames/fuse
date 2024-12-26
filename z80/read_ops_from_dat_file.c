@@ -11,23 +11,22 @@ static const int MAX_MNEMONIC_LENGTH = 10;
 static const int INITIAL_CAPACITY = 10;
 
 
-Z80_OP *opcodes = NULL;
-int numOpcodes = 0;
-
-static bool addOpcode(int *capacity, Z80_OP opcode);
+static bool add_op_code(int *capacity, Z80_OP op_code, Z80_OPS *ops);
 
 
-bool readOpcodes(const char *filename) {
+Z80_OPS read_op_codes(const char *filename) {
+    Z80_OPS ops = {0};
+
     FILE *file = fopen(filename, "rt");
+    char line[MAX_LINE_LENGTH];
+    
     int line_count = 0;
+    int capacity = 0;
 
     if (!file) {
         ERROR("Failed to open file '%s': %s", filename, strerror(errno));
-        return false;
+        return ops;
     }
-
-    char line[MAX_LINE_LENGTH];
-    int capacity = 0;
 
     while (fgets(line, sizeof(line), file)) {
         line_count++;
@@ -69,47 +68,47 @@ bool readOpcodes(const char *filename) {
             }
         }
 
-        Z80_OP opcode = {0};
+        Z80_OP op_code = {0};
 
-        opcode.id = (unsigned char)id;
-        opcode.op = op;
-        opcode.op_func_lookup = get_z80_op_func(op);
+        op_code.id = (unsigned char)id;
+        op_code.op = op;
+        op_code.op_func_lookup = get_z80_op_func(op);
 
-        strncpy(opcode.operand_1, operand1, MAX_OPERAND_LENGTH);
-        strncpy(opcode.operand_2, operand2, MAX_OPERAND_LENGTH);
-        strncpy(opcode.extras, extras, MAX_OPERAND_LENGTH);
+        strncpy(op_code.operand_1, operand1, MAX_OPERAND_LENGTH);
+        strncpy(op_code.operand_2, operand2, MAX_OPERAND_LENGTH);
+        strncpy(op_code.extras, extras, MAX_OPERAND_LENGTH);
 
-        if (addOpcode(&capacity, opcode) == false) {
+        if (add_op_code(&capacity, op_code, &ops) == false) {
             fclose(file);
 
-            return false;
+            return ops;
         }
     }
 
     fclose(file);
-    return true;
+    return ops;
 }
 
-static bool addOpcode(int *capacity, Z80_OP opcode) {
-    if (numOpcodes != opcode.id) {
-        WARNING("Invalid opcode ID (0x%02X %s) found at array position %d", opcode.id, get_mnemonic_name(opcode.op), numOpcodes);
+static bool add_op_code(int *capacity, Z80_OP op_code, Z80_OPS *ops) {
+    if (ops->num_op_codes != op_code.id) {
+        WARNING("Invalid opcode ID (0x%02X %s) found at array position %d", op_code.id, get_mnemonic_name(op_code.op), ops->num_op_codes);
     }
 
-    if (opcode.id >= *capacity) {
-        (*capacity) = opcode.id + INITIAL_CAPACITY;
+    if (op_code.id >= *capacity) {
+        (*capacity) = op_code.id + INITIAL_CAPACITY;
 
-        Z80_OP *newOpcodes = (Z80_OP *)realloc(opcodes, (*capacity) * sizeof(Z80_OP));
+        Z80_OP *new_op_codes = (Z80_OP *)realloc(ops->op_codes, (*capacity) * sizeof(Z80_OP));
 
-        if (!newOpcodes) {
+        if (!new_op_codes) {
             FATAL("Failed to reallocate memory");
             return false;
         }
         
-        opcodes = newOpcodes;
+        ops->op_codes = new_op_codes;
     }
 
-    opcodes[(int)opcode.id] = opcode;
-    numOpcodes = opcode.id + 1;
+    ops->op_codes[(int)op_code.id] = op_code;
+    ops->num_op_codes = op_code.id + 1;
 
     return true;
 }
@@ -117,20 +116,20 @@ static bool addOpcode(int *capacity, Z80_OP opcode) {
 #ifdef TEST_READ_OPS_FROM_DAT_FILE
 int main() {
     const char *filename = "opcodes_base.dat";
-    int result = readOpcodes(filename);
+    Z80_OPS ops = read_op_codes(filename);
 
-    if (result == true) {
-        printf("Successfully read %d opcodes.\n", numOpcodes);
+    if (ops.num_op_codes > 0) {
+        printf("Successfully read %d opcodes.\n", ops.num_op_codes);
 
-        for (int i = 0; i < numOpcodes; i++) {
-            Z80_OP opcode = opcodes[i];
-            printf("ID: %02X, OP: %s, Operand 1: %s, Operand 2: %s\n", opcode.id, getMnemonicName(opcode.op), opcode.operand_1, opcode.operand_2);
+        for (int i = 0; i < ops.num_op_codes; i++) {
+            Z80_OP op_code = ops.op_codes[i];
+            printf("ID: %02X, OP: %s, Operand 1: %s, Operand 2: %s\n", op_code.id, get_mnemonic_name(op_code.op), op_code.operand_1, op_code.operand_2);
         }
     } else {
-        printf("Failed to read opcodes.\n");
+        printf("Failed to read op codes.\n");
     }
 
-    free(opcodes);
+    free(ops.op_codes);
     return 0;
 }
 #endif

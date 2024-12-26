@@ -97,7 +97,7 @@ static Z80_OP_FUNC_LOOKUP z80_op_func_lookup[] = {
 static void arithmetic_logical(Z80_MNEMONIC op, const char *operand_1, const char *operand_2);
 static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_2);
 
-static is_flag_true(const char *condition);
+static bool is_flag_true(const char *condition);
 static FLAG_MAPPING get_flag_mapping(const char *condition);
 
 
@@ -132,49 +132,78 @@ Z80_OP_FUNC_LOOKUP get_z80_op_func(Z80_MNEMONIC op) {
  */
 static void arithmetic_logical(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
     libspectrum_byte operand_2_value = 0;
+    char *op_1 = strdup(operand_1);
+    char *op_2 = strdup(operand_2);
 
     /*
      *  In Z80 assembly, if only operand_1 is provided then the code assumes that the operation uses the accumulator register A.
      */
-    if (operand_2 == NULL || strlen(operand_2) == 0) {
-        strcpy(operand_2, operand_1);
-        strcpy(operand_1, "A");
+    if (op_2 == NULL || strlen(op_2) == 0) {
+        strcpy(op_2, op_1);
+        strcpy(op_1, "A");
     }
 
-    if (strlen(operand_1) == 1) {
-        if (operand_1[0] != 'A') {
-            ERROR("Unexpected operand 1 found, expected 'A': %s", operand_1);
+    if (strlen(op_1) == 1) {
+        if (op_1[0] != 'A') {
+            ERROR("Unexpected operand 1 found, expected 'A': %s", op_1);
+
+            free(op_1);
+            free(op_2);
             return;
         }
 
-        if (strcmp(operand_2, "(REGISTER+dd)") == 0) {
+        if (strcmp(op_2, "(REGISTER+dd)") == 0) {
             operand_2_value = get_DD_value();
-        } else if (strcmp(operand_2, "(HL)") == 0) {
+        } else if (strcmp(op_2, "(HL)") == 0) {
             operand_2_value = readbyte(HL);
         } else {
             operand_2_value = readbyte(PC++);
 
-            if (strlen(operand_2) > 0) {
-                WARNING("Unused operand 2 found for %s: %s", get_mnemonic_name(op), operand_2);
+            if (strlen(op_2) > 0) {
+                WARNING("Unused operand 2 found for %s: %s", get_mnemonic_name(op), op_2);
             }
         }
 
-        //  Example for an opcode: op_ADC(operand_2_value);
-    } else if (strlen(operand_1) == 2) {
-        if (strcmp(operand_1, "HL") != 0) {
-            WARNING("Unexpected operand 2 found for %s: %s", get_mnemonic_name(op), operand_2);
+        switch(op) {
+            case ADD:
+                _ADD(operand_2_value);
+                break;
+            case ADC:
+                _ADC(operand_2_value);
+                break;
+            case AND:
+                _AND(operand_2_value);
+                break;
+            case CP:
+                _CP(operand_2_value);
+                break;
+            case SBC:
+                _SBC(operand_2_value);
+                break;
+            case SUB:
+                _SUB(operand_2_value);
+                break;
+            case OR:
+                _OR(operand_2_value);
+                break;
+            default:
+                ERROR("Unexpected operation found with register operand for %s: %s", get_mnemonic_name(op), operand_2_value);
+        }
+    } else if (strlen(op_1) == 2) {
+        if (strcmp(op_1, "HL") != 0) {
+            WARNING("Unexpected operand 2 found for %s: %s", get_mnemonic_name(op), op_2);
         }
 
-        libspectrum_word operand_1_value = get_word_reg_value(operand_1);
+        libspectrum_word operand_1_value = get_word_reg_value(op_1);
 
         perform_contend_read_no_mreq_iterations(IR, 7);
 
         switch(op) {
             case ADD:
                 if (strlen(operand_2) != 2) {
-                    WARNING("Unexpected register in operand 2 found for ADD: %s", operand_2);
+                    WARNING("Unexpected register in operand 2 found for ADD: %s", op_2);
                 } else {
-                    _ADD16(operand_1_value, get_word_reg_value(operand_2));
+                    _ADD16(operand_1_value, get_word_reg_value(op_2));
                 }
                 break;
             case ADC:
@@ -184,19 +213,22 @@ static void arithmetic_logical(Z80_MNEMONIC op, const char *operand_1, const cha
                 _SBC16(operand_1_value);
                 break;
             default:
-                ERROR("Unexpected operation found with 16-bit register operand for %s: %s", get_mnemonic_name(op), operand_1);
+                ERROR("Unexpected operation found with 16-bit register operand for %s: %s", get_mnemonic_name(op), op_1);
         }
     } else {
-        ERROR("Unexpected operand 1 found for %s: %s", get_mnemonic_name(op), operand_1);
+        ERROR("Unexpected operand 1 found for %s: %s", get_mnemonic_name(op), op_1);
     }
+
+    free(op_1);
+    free(op_2);
 }
 
 /*
  *  This can be called by CALL, JP
  */
 static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
-    char *condition = operand_1;
-    char *offset = operand_2;
+    const char *condition = operand_1;
+    const char *offset = operand_2;
 
     MEMPTR_L= readbyte(PC++);
     MEMPTR_H = readbyte(PC);
@@ -297,11 +329,43 @@ static void inc_dec(Z80_MNEMONIC op, const char *operand) {
     int modifier = (op == INC) ? 1 : -1;
 
     if (strlen(operand) == 1) {
-        _INC(get_byte_reg(operand));
+        _INC(get_byte_reg(operand[0]));
+    } else if (strlen(operand) == 2) {
+        perform_contend_read_no_mreq(IR, 1);
+        perform_contend_read_no_mreq(IR, 1);
+
+        (*get_word_reg(operand)) += modifier;
+    } else if (strcmp(operand, "(HL)") == 0) {
+        libspectrum_byte bytetemp = readbyte(HL);
+
+	    perform_contend_read_no_mreq(HL, 1);
+
+        (op == INC) ? _INC(&bytetemp) : _DEC(&bytetemp);
+	    writebyte(HL, bytetemp);
+    } else if (strcmp(operand, "(REGISTER+dd)") == 0) {
+        libspectrum_byte offset;
+        libspectrum_byte bytetemp;
+
+        offset = readbyte(PC);
+
+        for (int i = 0; i < 5; i++) {
+            perform_contend_read_no_mreq(PC, 1);
+        }
+
+        PC++;
+        MEMPTR_W = IX + (libspectrum_signed_byte)offset;
+        bytetemp = readbyte(MEMPTR_W);
+
+        perform_contend_read_no_mreq(MEMPTR_W, 1);
+
+        (op == INC) ? _INC(&bytetemp) : _DEC(&bytetemp);
+        writebyte(MEMPTR_W, bytetemp);
+    } else {
+        ERROR("Unexpected operand found for %s: %s", get_mnemonic_name(op), operand);
     }
 }
 
-static is_flag_true(const char *condition) {
+static bool is_flag_true(const char *condition) {
     FLAG_MAPPING flag_mapping = get_flag_mapping(condition);
 
     if ((flag_mapping.is_not && !(F & flag_mapping.flag)) ||
