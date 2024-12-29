@@ -128,7 +128,10 @@ Z80_OP_FUNC_LOOKUP get_z80_op_func(Z80_MNEMONIC op) {
  */
 
 /*
- *  This can be called by ADC, ADD, AND, CP, OR, SBC, SUB, XOR
+ *  This can be called by ADC, ADD, AND, CP, OR, SBC, SUB, XOR.
+ *
+ *  TODO: This will have the DD instructions removed and transferred to the CB, FD, DD and ED
+ *  specific functions.
  */
 static void arithmetic_logical(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
     libspectrum_byte operand_2_value = 0;
@@ -324,7 +327,12 @@ static void cpir_cpdr(Z80_MNEMONIC op) {
     HL += modifier;
 }
 
-
+/*
+ *  To be completed once the shift instructions are implemented
+ *
+ *  TODO: This will have the DD instructions removed and transferred to the CB, FD, DD and ED
+ *  specific functions.
+ */
 static void inc_dec(Z80_MNEMONIC op, const char *operand) {
     int modifier = (op == INC) ? 1 : -1;
 

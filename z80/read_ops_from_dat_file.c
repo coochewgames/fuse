@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #include "read_ops_from_dat_file.h"
 #include "../logging.h"
@@ -112,24 +113,3 @@ static bool add_op_code(int *capacity, Z80_OP op_code, Z80_OPS *ops) {
 
     return true;
 }
-
-#ifdef TEST_READ_OPS_FROM_DAT_FILE
-int main() {
-    const char *filename = "opcodes_base.dat";
-    Z80_OPS ops = read_op_codes(filename);
-
-    if (ops.num_op_codes > 0) {
-        printf("Successfully read %d opcodes.\n", ops.num_op_codes);
-
-        for (int i = 0; i < ops.num_op_codes; i++) {
-            Z80_OP op_code = ops.op_codes[i];
-            printf("ID: %02X, OP: %s, Operand 1: %s, Operand 2: %s\n", op_code.id, get_mnemonic_name(op_code.op), op_code.operand_1, op_code.operand_2);
-        }
-    } else {
-        printf("Failed to read op codes.\n");
-    }
-
-    free(ops.op_codes);
-    return 0;
-}
-#endif
