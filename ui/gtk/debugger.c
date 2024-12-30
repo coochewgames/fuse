@@ -850,7 +850,7 @@ ui_debugger_update( void )
 
   snprintf( buffer, 80, "T-states %5d\nHalted %d", tstates, z80.halted );
   gtk_label_set_text( GTK_LABEL( registers[14] ), buffer );
-  snprintf( buffer, 80, "  IM %d\nIFF1 %d\nIFF2 %d", IM, IFF1, IFF2 );
+  snprintf( buffer, 80, "  IM %d\nIFF1 %d\nIFF2 %d", IMODE, IFF1, IFF2 );
   gtk_label_set_text( GTK_LABEL( registers[15] ), buffer );
 
   strcpy( buffer, "SZ5H3PNC\n" );

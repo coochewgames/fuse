@@ -658,7 +658,7 @@ ui_debugger_update( void )
   SendDlgItemMessage( fuse_hDBGWnd, IDC_DBG_REG_T_STATES,
                       WM_SETTEXT, (WPARAM) 0, (LPARAM) buffer );
   _sntprintf( buffer, 80, TEXT( "  IM %d\r\nIFF1 %d\r\nIFF2 %d" ),
-              IM, IFF1, IFF2 );
+              IMODE, IFF1, IFF2 );
   SendDlgItemMessage( fuse_hDBGWnd, IDC_DBG_REG_IM,
                       WM_SETTEXT, (WPARAM) 0, (LPARAM) buffer );
 

@@ -302,7 +302,7 @@ static void display_registers( void )
 
   show_register2( LC(3),  LR(2), "DE",   DE );
   show_register2( LC(12), LR(2), "DE'",  DE_ );
-  show_register0( LC(20), LR(2), "IM",   IM );
+  show_register0( LC(20), LR(2), "IM",   IMODE );
   show_register0( LC(29), LR(2), "IFF1", IFF1 );
   show_register0( LC(36), LR(2), "IFF2", IFF2 );
 
