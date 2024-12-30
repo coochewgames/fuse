@@ -453,6 +453,10 @@ void op_OTDR(void) {
     printf("op_OTDR called\n");
 }
 
+void op_SLTTRAP(void) {
+    printf("op_SLTTRAP called\n");
+}
+
 // Function implementations for opcodes with one parameter
 void op_INC(const char *value) {
     printf("op_INC called with value: %s\n", value);
@@ -538,6 +542,10 @@ void op_IM(const char *value) {
     printf("op_IM called with value: %s\n", value);
 }
 
+void op_SHIFT(const char *value) {
+    printf("op_SHIFT called with value: %s\n", value);
+}
+
 // Function implementations for opcodes with two parameters
 void op_LD(const char *value1, const char *value2) {
     printf("op_LD called with value1: %s, value2: %s\n", value1, value2);
@@ -585,12 +593,4 @@ void op_IN(const char *value1, const char *value2) {
 
 void op_OUT(const char *value1, const char *value2) {
     printf("op_OUT called with value1: %s, value2: %s\n", value1, value2);
-}
-
-void op_SHIFT(const char *value) {
-    printf("op_SHIFT called with value: %s\n", value);
-}
-
-void op_SLTTRAP(void) {
-    printf("op_SLTTRAP called\n");
 }
