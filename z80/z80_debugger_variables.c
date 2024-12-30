@@ -153,13 +153,13 @@ set_memptr( libspectrum_dword value )
 static libspectrum_dword
 get_IM( void )
 {
-  return IM;
+  return IMODE;
 }
 
 static void
 set_IM( libspectrum_dword value )
 {
-  if( value <= 2 ) IM = value;
+  if( value <= 2 ) IMODE = value;
 }
 
 static libspectrum_dword

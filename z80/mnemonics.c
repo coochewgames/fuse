@@ -9,9 +9,9 @@ const char *get_mnemonic_name(Z80_MNEMONIC mnemonic) {
         case LD: return "LD";
         case INC: return "INC";
         case DEC: return "DEC";
-        case RLCA: return "RLCA";
         case ADD: return "ADD";
         case SUB: return "SUB";
+        case NEG: return "NEG";
         case AND: return "AND";
         case OR: return "OR";
         case XOR: return "XOR";
@@ -20,10 +20,9 @@ const char *get_mnemonic_name(Z80_MNEMONIC mnemonic) {
         case JR: return "JR";
         case CALL: return "CALL";
         case RET: return "RET";
+        case RETN: return "RETN";
         case PUSH: return "PUSH";
         case POP: return "POP";
-        case RLA: return "RLA";
-        case RRA: return "RRA";
         case DAA: return "DAA";
         case CPL: return "CPL";
         case SCF: return "SCF";
@@ -35,14 +34,20 @@ const char *get_mnemonic_name(Z80_MNEMONIC mnemonic) {
         case RR: return "RR";
         case SLA: return "SLA";
         case SRA: return "SRA";
+        case SLL: return "SLL";
         case SRL: return "SRL";
+        case RLA: return "RLA";
+        case RRA: return "RRA";
         case RLC: return "RLC";
         case RRC: return "RRC";
+        case RLD: return "RLD";
+        case RRD: return "RRD";
+        case RLCA: return "RLCA";
+        case RRCA: return "RRCA";
         case BIT: return "BIT";
         case RES: return "RES";
         case SET: return "SET";
         case EX: return "EX";
-        case RRCA: return "RRCA";
         case DJNZ: return "DJNZ";
         case ADC: return "ADC";
         case SBC: return "SBC";
@@ -66,6 +71,7 @@ const char *get_mnemonic_name(Z80_MNEMONIC mnemonic) {
         case CPDR: return "CPDR";
         case INDR: return "INDR";
         case OTDR: return "OTDR";
+        case IM: return "IM";
         default: return "UNKNOWN";    // Unknown mnemonic
     }
 }
@@ -78,6 +84,7 @@ Z80_MNEMONIC get_mnemonic_enum(const char *mnemonic) {
     if (strcmp(mnemonic, "RLCA") == 0) return RLCA;
     if (strcmp(mnemonic, "ADD") == 0) return ADD;
     if (strcmp(mnemonic, "SUB") == 0) return SUB;
+    if (strcmp(mnemonic, "NEG") == 0) return NEG;
     if (strcmp(mnemonic, "AND") == 0) return AND;
     if (strcmp(mnemonic, "OR") == 0) return OR;
     if (strcmp(mnemonic, "XOR") == 0) return XOR;
@@ -86,10 +93,9 @@ Z80_MNEMONIC get_mnemonic_enum(const char *mnemonic) {
     if (strcmp(mnemonic, "JR") == 0) return JR;
     if (strcmp(mnemonic, "CALL") == 0) return CALL;
     if (strcmp(mnemonic, "RET") == 0) return RET;
+    if (strcmp(mnemonic, "RETN") == 0) return RETN;
     if (strcmp(mnemonic, "PUSH") == 0) return PUSH;
     if (strcmp(mnemonic, "POP") == 0) return POP;
-    if (strcmp(mnemonic, "RLA") == 0) return RLA;
-    if (strcmp(mnemonic, "RRA") == 0) return RRA;
     if (strcmp(mnemonic, "DAA") == 0) return DAA;
     if (strcmp(mnemonic, "CPL") == 0) return CPL;
     if (strcmp(mnemonic, "SCF") == 0) return SCF;
@@ -101,14 +107,19 @@ Z80_MNEMONIC get_mnemonic_enum(const char *mnemonic) {
     if (strcmp(mnemonic, "RR") == 0) return RR;
     if (strcmp(mnemonic, "SLA") == 0) return SLA;
     if (strcmp(mnemonic, "SRA") == 0) return SRA;
+    if (strcmp(mnemonic, "SLL") == 0) return SLL;
     if (strcmp(mnemonic, "SRL") == 0) return SRL;
+    if (strcmp(mnemonic, "RLA") == 0) return RLA;
+    if (strcmp(mnemonic, "RRA") == 0) return RRA;
     if (strcmp(mnemonic, "RLC") == 0) return RLC;
     if (strcmp(mnemonic, "RRC") == 0) return RRC;
+    if (strcmp(mnemonic, "RLD") == 0) return RLD;
+    if (strcmp(mnemonic, "RRD") == 0) return RRD;
+    if (strcmp(mnemonic, "RRCA") == 0) return RRCA;
     if (strcmp(mnemonic, "BIT") == 0) return BIT;
     if (strcmp(mnemonic, "RES") == 0) return RES;
     if (strcmp(mnemonic, "SET") == 0) return SET;
     if (strcmp(mnemonic, "EX") == 0) return EX;
-    if (strcmp(mnemonic, "RRCA") == 0) return RRCA;
     if (strcmp(mnemonic, "DJNZ") == 0) return DJNZ;
     if (strcmp(mnemonic, "ADC") == 0) return ADC;
     if (strcmp(mnemonic, "SBC") == 0) return SBC;
@@ -132,6 +143,7 @@ Z80_MNEMONIC get_mnemonic_enum(const char *mnemonic) {
     if (strcmp(mnemonic, "CPDR") == 0) return CPDR;
     if (strcmp(mnemonic, "INDR") == 0) return INDR;
     if (strcmp(mnemonic, "OTDR") == 0) return OTDR;
-    
+    if (strcmp(mnemonic, "IM") == 0) return IM;
+
     return UNKNOWN_MNEMONIC;
 }

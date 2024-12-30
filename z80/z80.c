@@ -158,7 +158,7 @@ z80_reset( int hard_reset )
   I=R=R7=0;
   PC=0;
   SP=0xffff;
-  IFF1=IFF2=IM=0;
+  IFF1=IFF2=IMODE=0;
   z80.halted=0;
   z80.iff2_read=0;
   Q = 0;
@@ -210,7 +210,7 @@ z80_interrupt( void )
 
     writebyte( --SP, PCH ); writebyte( --SP, PCL );
 
-    switch(IM) {
+    switch(IMODE) {
       case 0:
         /* We assume 0xff (RST 38) is on the data bus, as the Spectrum leaves
 	   it pulled high when the end-of-frame interrupt is delivered.  Only
@@ -232,7 +232,7 @@ z80_interrupt( void )
 	  break;
 	}
       default:
-	ui_error( UI_ERROR_ERROR, "Unknown interrupt mode %d", IM );
+	ui_error( UI_ERROR_ERROR, "Unknown interrupt mode %d", IMODE );
 	fuse_abort();
     }
 
@@ -307,7 +307,7 @@ z80_from_snapshot( libspectrum_snap *snap )
   SP = libspectrum_snap_sp( snap ); PC = libspectrum_snap_pc( snap );
 
   IFF1 = libspectrum_snap_iff1( snap ); IFF2 = libspectrum_snap_iff2( snap );
-  IM = libspectrum_snap_im( snap );
+  IMODE = libspectrum_snap_im( snap );
 
   z80.memptr.w = libspectrum_snap_memptr( snap );
 
@@ -342,7 +342,7 @@ z80_to_snapshot( libspectrum_snap *snap )
 
   libspectrum_snap_set_iff1( snap, IFF1 );
   libspectrum_snap_set_iff2( snap, IFF2 );
-  libspectrum_snap_set_im( snap, IM );
+  libspectrum_snap_set_im( snap, IMODE );
 
   libspectrum_snap_set_halted( snap, z80.halted );
   libspectrum_snap_set_last_instruction_ei(

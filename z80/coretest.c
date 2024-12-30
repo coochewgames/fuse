@@ -293,7 +293,7 @@ read_test( FILE *f, libspectrum_dword *end_tstates )
     return 1;
   }
 
-  I = i; R = R7 = r; IFF1 = iff1; IFF2 = iff2; IM = im;
+  I = i; R = R7 = r; IFF1 = iff1; IFF2 = iff2; IMODE = im;
   *end_tstates = end_tstates2;
 
   while( 1 ) {
@@ -333,7 +333,7 @@ dump_z80_state( void )
   printf( "%04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x\n",
 	  AF, BC, DE, HL, AF_, BC_, DE_, HL_, IX, IY, SP, PC, z80.memptr.w );
   printf( "%02x %02x %d %d %d %d %d\n", I, ( R7 & 0x80 ) | ( R & 0x7f ),
-	  IFF1, IFF2, IM, z80.halted, tstates );
+	  IFF1, IFF2, IMODE, z80.halted, tstates );
 }
 
 static void

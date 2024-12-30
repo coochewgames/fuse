@@ -97,9 +97,9 @@
 #define CLOCKL  z80.clockl // Low byte of clock register
 
 /* Interrupt Flip-Flops */
-#define IFF1 z80.iff1   // Interrupt Flip-Flop 1
-#define IFF2 z80.iff2   // Interrupt Flip-Flop 2
-#define IM   z80.im     // Interrupt Mode
+#define IFF1  z80.iff1   // Interrupt Flip-Flop 1
+#define IFF2  z80.iff2   // Interrupt Flip-Flop 2
+#define IMODE z80.im     // Interrupt Mode (named IMODE to avoid conflict with IM opcode)
 
 /* Memory pointer */
 #define MEMPTR_H z80.memptr.b.h   // High byte of the memory pointer register

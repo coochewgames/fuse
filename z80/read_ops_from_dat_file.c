@@ -73,7 +73,7 @@ Z80_OPS read_op_codes(const char *filename) {
 
         op_code.id = (unsigned char)id;
         op_code.op = op;
-        op_code.op_func_lookup = get_z80_op_func(op);
+        // op_code.op_func_lookup = get_z80_op_func(op);
 
         strncpy(op_code.operand_1, operand1, MAX_OPERAND_LENGTH);
         strncpy(op_code.operand_2, operand2, MAX_OPERAND_LENGTH);
@@ -92,7 +92,7 @@ Z80_OPS read_op_codes(const char *filename) {
 
 static bool add_op_code(int *capacity, Z80_OP op_code, Z80_OPS *ops) {
     if (ops->num_op_codes != op_code.id) {
-        WARNING("Invalid opcode ID (0x%02X %s) found at array position %d", op_code.id, get_mnemonic_name(op_code.op), ops->num_op_codes);
+        WARNING("Invalid opcode ID (0x%02X %d %s) found at array position %d", op_code.id, op_code.id, get_mnemonic_name(op_code.op), ops->num_op_codes);
     }
 
     if (op_code.id >= *capacity) {

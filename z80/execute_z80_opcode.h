@@ -5,31 +5,6 @@
 
 #include "mnemonics.h"
 
-typedef void (*OP_FUNC_NO_PARAMS)(void);
-typedef void (*OP_FUNC_ONE_PARAM)(const char *value);
-typedef void (*OP_FUNC_TWO_PARAMS)(const char *value1, const char *value2);
-//  Will add extras parameter if needed
-
-typedef enum {
-    OP_TYPE_NO_PARAMS,
-    OP_TYPE_ONE_PARAM,
-    OP_TYPE_TWO_PARAMS
-} OP_FUNC_TYPE;
-
-typedef struct {
-    Z80_MNEMONIC op;
-
-    OP_FUNC_TYPE function_type;
-    union {
-        OP_FUNC_NO_PARAMS no_params;
-        OP_FUNC_ONE_PARAM one_param;
-        OP_FUNC_TWO_PARAMS two_params;
-    } func;
-} Z80_OP_FUNC_LOOKUP;
-
-
-Z80_OP_FUNC_LOOKUP get_z80_op_func(Z80_MNEMONIC op);
-
 // Function prototypes for opcodes with no parameters
 void op_NOP(void);
 void op_RLCA(void);
@@ -42,10 +17,14 @@ void op_SCF(void);
 void op_CCF(void);
 void op_HALT(void);
 void op_RET(void);
+void op_NEG(void);
+void op_RETN(void);
+void op_RRD(void);
+void op_RLD(void);
+void op_LDI(void);
 void op_DI(void);
 void op_EI(void);
 void op_EXX(void);
-void op_LDI(void);
 void op_CPI(void);
 void op_INI(void);
 void op_OUTI(void);
@@ -82,6 +61,8 @@ void op_RLC(const char *value);
 void op_RRC(const char *value);
 void op_DJNZ(const char *value);
 void op_JR(const char *value);
+void op_SLL(const char *value);
+void op_IM(const char *value);
 
 // Function prototypes for opcodes with two parameters
 void op_LD(const char *value1, const char *value2);
