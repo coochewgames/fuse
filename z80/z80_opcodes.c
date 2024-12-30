@@ -21,47 +21,52 @@ static Z80_OP_FUNC_LOOKUP z80_op_func_lookup[] = {
     { LD, OP_TYPE_TWO_PARAMS, .func.two_params = op_LD },
     { INC, OP_TYPE_ONE_PARAM, .func.one_param = op_INC },
     { DEC, OP_TYPE_ONE_PARAM, .func.one_param = op_DEC },
-    { RLCA, OP_TYPE_NO_PARAMS, .func.no_params = op_RLCA },
     { ADD, OP_TYPE_TWO_PARAMS, .func.two_params = op_ADD },
-    { RRCA, OP_TYPE_NO_PARAMS, .func.no_params = op_RRCA },
-    { RLA, OP_TYPE_NO_PARAMS, .func.no_params = op_RLA },
-    { RRA, OP_TYPE_NO_PARAMS, .func.no_params = op_RRA },
+    { SUB, OP_TYPE_ONE_PARAM, .func.one_param = op_SUB },
+    { NEG, OP_TYPE_NO_PARAMS, .func.no_params = op_NEG },
+    { AND, OP_TYPE_ONE_PARAM, .func.one_param = op_AND },
+    { OR, OP_TYPE_ONE_PARAM, .func.one_param = op_OR },
+    { XOR, OP_TYPE_ONE_PARAM, .func.one_param = op_XOR },
+    { CP, OP_TYPE_ONE_PARAM, .func.one_param = op_CP },
+    { JP, OP_TYPE_TWO_PARAMS, .func.two_params = op_JP },
+    { JR, OP_TYPE_ONE_PARAM, .func.one_param = op_JR },
+    { CALL, OP_TYPE_TWO_PARAMS, .func.two_params = op_CALL },
+    { RET, OP_TYPE_NO_PARAMS, .func.no_params = op_RET },
+    { RETN, OP_TYPE_NO_PARAMS, .func.no_params = op_RETN },
+    { PUSH, OP_TYPE_ONE_PARAM, .func.one_param = op_PUSH },
+    { POP, OP_TYPE_ONE_PARAM, .func.one_param = op_POP },
     { DAA, OP_TYPE_NO_PARAMS, .func.no_params = op_DAA },
     { CPL, OP_TYPE_NO_PARAMS, .func.no_params = op_CPL },
     { SCF, OP_TYPE_NO_PARAMS, .func.no_params = op_SCF },
     { CCF, OP_TYPE_NO_PARAMS, .func.no_params = op_CCF },
     { HALT, OP_TYPE_NO_PARAMS, .func.no_params = op_HALT },
-    { ADC, OP_TYPE_TWO_PARAMS, .func.two_params = op_ADC },
-    { SUB, OP_TYPE_ONE_PARAM, .func.one_param = op_SUB },
-    { SBC, OP_TYPE_TWO_PARAMS, .func.two_params = op_SBC },
-    { AND, OP_TYPE_ONE_PARAM, .func.one_param = op_AND },
-    { XOR, OP_TYPE_ONE_PARAM, .func.one_param = op_XOR },
-    { OR, OP_TYPE_ONE_PARAM, .func.one_param = op_OR },
-    { CP, OP_TYPE_ONE_PARAM, .func.one_param = op_CP },
-    { RET, OP_TYPE_NO_PARAMS, .func.no_params = op_RET },
-    { POP, OP_TYPE_ONE_PARAM, .func.one_param = op_POP },
-    { JP, OP_TYPE_TWO_PARAMS, .func.two_params = op_JP },
-    { CALL, OP_TYPE_TWO_PARAMS, .func.two_params = op_CALL },
-    { PUSH, OP_TYPE_ONE_PARAM, .func.one_param = op_PUSH },
-    { RST, OP_TYPE_ONE_PARAM, .func.one_param = op_RST },
-    { EX, OP_TYPE_TWO_PARAMS, .func.two_params = op_EX },
     { DI, OP_TYPE_NO_PARAMS, .func.no_params = op_DI },
     { EI, OP_TYPE_NO_PARAMS, .func.no_params = op_EI },
     { RL, OP_TYPE_ONE_PARAM, .func.one_param = op_RL },
     { RR, OP_TYPE_ONE_PARAM, .func.one_param = op_RR },
     { SLA, OP_TYPE_ONE_PARAM, .func.one_param = op_SLA },
     { SRA, OP_TYPE_ONE_PARAM, .func.one_param = op_SRA },
+    { SLL, OP_TYPE_ONE_PARAM, .func.one_param = op_SLL },
     { SRL, OP_TYPE_ONE_PARAM, .func.one_param = op_SRL },
+    { RLA, OP_TYPE_NO_PARAMS, .func.no_params = op_RLA },
+    { RRA, OP_TYPE_NO_PARAMS, .func.no_params = op_RRA },
     { RLC, OP_TYPE_ONE_PARAM, .func.one_param = op_RLC },
     { RRC, OP_TYPE_ONE_PARAM, .func.one_param = op_RRC },
+    { RLD, OP_TYPE_NO_PARAMS, .func.no_params = op_RLD },
+    { RRD, OP_TYPE_NO_PARAMS, .func.no_params = op_RRD },
+    { RLCA, OP_TYPE_NO_PARAMS, .func.no_params = op_RLCA },
+    { RRCA, OP_TYPE_NO_PARAMS, .func.no_params = op_RRCA },
     { BIT, OP_TYPE_TWO_PARAMS, .func.two_params = op_BIT },
     { RES, OP_TYPE_TWO_PARAMS, .func.two_params = op_RES },
     { SET, OP_TYPE_TWO_PARAMS, .func.two_params = op_SET },
-    { IN, OP_TYPE_TWO_PARAMS, .func.two_params = op_IN },
-    { OUT, OP_TYPE_TWO_PARAMS, .func.two_params = op_OUT },
+    { EX, OP_TYPE_TWO_PARAMS, .func.two_params = op_EX },
     { DJNZ, OP_TYPE_ONE_PARAM, .func.one_param = op_DJNZ },
-    { JR, OP_TYPE_ONE_PARAM, .func.one_param = op_JR },
+    { ADC, OP_TYPE_TWO_PARAMS, .func.two_params = op_ADC },
+    { SBC, OP_TYPE_TWO_PARAMS, .func.two_params = op_SBC },
+    { RST, OP_TYPE_ONE_PARAM, .func.one_param = op_RST },
+    { OUT, OP_TYPE_TWO_PARAMS, .func.two_params = op_OUT },
     { EXX, OP_TYPE_NO_PARAMS, .func.no_params = op_EXX },
+    { IN, OP_TYPE_TWO_PARAMS, .func.two_params = op_IN },
     { LDI, OP_TYPE_NO_PARAMS, .func.no_params = op_LDI },
     { CPI, OP_TYPE_NO_PARAMS, .func.no_params = op_CPI },
     { INI, OP_TYPE_NO_PARAMS, .func.no_params = op_INI },
@@ -78,12 +83,7 @@ static Z80_OP_FUNC_LOOKUP z80_op_func_lookup[] = {
     { CPDR, OP_TYPE_NO_PARAMS, .func.no_params = op_CPDR },
     { INDR, OP_TYPE_NO_PARAMS, .func.no_params = op_INDR },
     { OTDR, OP_TYPE_NO_PARAMS, .func.no_params = op_OTDR },
-    { SLL, OP_TYPE_ONE_PARAM, .func.one_param = op_SLL },
-    { NEG, OP_TYPE_NO_PARAMS, .func.no_params = op_NEG },
-    { RETN, OP_TYPE_NO_PARAMS, .func.no_params = op_RETN },
     { IM, OP_TYPE_ONE_PARAM, .func.one_param = op_IM },
-    { RRD, OP_TYPE_NO_PARAMS, .func.no_params = op_RRD },
-    { RLD, OP_TYPE_NO_PARAMS, .func.no_params = op_RLD },
     { 0, 0, {NULL} } // Sentinel value to mark the end of the array
 };
 
@@ -125,7 +125,7 @@ Z80_OP_FUNC_LOOKUP get_z80_op_func(Z80_MNEMONIC op) {
     return z80_op_func;
 }
 
-//#ifdef TEST_READ_OPS_FROM_DAT_FILE
+#ifdef TEST_READ_OPS_FROM_DAT_FILE
 int main() {
     if (init_op_sets()) {
         printf("\n****Init Op Sets complete.\n\n");
@@ -154,4 +154,4 @@ int main() {
 
     return 0;
 }
-//#endif
+#endif
