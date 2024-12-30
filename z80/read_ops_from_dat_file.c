@@ -19,6 +19,8 @@ static bool add_op_code(int *capacity, Z80_OP op_code, Z80_OPS *ops);
  *  Read the op codes from the dat files and store them in the Z80_OPS struct.
  *  The files can skip op codes by leaving gaps in the ID sequence and it can also
  *  have IDs with no associated op codes.
+ *  The function will return a sparse array with the identifier of the op code being
+ *  used for the index of the array to avoid having to loop through to find a value.
  */
 Z80_OPS read_op_codes(const char *filename) {
     Z80_OPS ops = {0};
@@ -97,7 +99,7 @@ Z80_OPS read_op_codes(const char *filename) {
 
 static bool add_op_code(int *capacity, Z80_OP op_code, Z80_OPS *ops) {
     if (ops->num_op_codes != op_code.id) {
-        WARNING("Invalid opcode ID (0x%02X %d %s) found at array position %d", op_code.id, op_code.id, get_mnemonic_name(op_code.op), ops->num_op_codes);
+        INFO("Out of sequence opcode ID (0x%02X:%d %s) found; current array position %d", op_code.id, op_code.id, get_mnemonic_name(op_code.op), ops->num_op_codes);
     }
 
     if (op_code.id >= *capacity) {

@@ -4,7 +4,7 @@
 #define UNKNOWN_MNEMONIC  -1
 
 typedef enum {
-    NOP,    // No operation
+    NOP = 0,// No operation
     LD,     // Load data between registers or between memory and registers
     INC,    // Increment register or memory location by 1
     DEC,    // Decrement register or memory location by 1
