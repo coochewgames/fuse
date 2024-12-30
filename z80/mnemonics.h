@@ -70,7 +70,9 @@ typedef enum {
     CPDR,   // Compare, decrement, and repeat
     INDR,   // Input, decrement, and repeat
     OTDR,   // Output, decrement, and repeat
-    IM,     // Set interrupt mode
+    IM,     // Set interrupt mode,
+    SHIFT,  // Shift operation - emulation only
+    SLTTRAP,// Trap for SLT instruction - emulation only
     Z80_MNEMONIC_COUNT // This should be the last entry
 } Z80_MNEMONIC;
 

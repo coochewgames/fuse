@@ -84,6 +84,8 @@ static Z80_OP_FUNC_LOOKUP z80_op_func_lookup[] = {
     { INDR, OP_TYPE_NO_PARAMS, .func.no_params = op_INDR },
     { OTDR, OP_TYPE_NO_PARAMS, .func.no_params = op_OTDR },
     { IM, OP_TYPE_ONE_PARAM, .func.one_param = op_IM },
+    { SHIFT, OP_TYPE_ONE_PARAM, .func.one_param = op_SHIFT },
+    { SLTTRAP, OP_TYPE_NO_PARAMS, .func.no_params = op_SLTTRAP },
     { 0, 0, {NULL} } // Sentinel value to mark the end of the array
 };
 

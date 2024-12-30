@@ -43,6 +43,10 @@ Z80_OPS read_op_codes(const char *filename) {
             continue;
         }
 
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+
         unsigned int id;
         char mnemonic[MAX_MNEMONIC_LENGTH];
         char operands[MAX_LINE_LENGTH] = "";
@@ -52,7 +56,9 @@ Z80_OPS read_op_codes(const char *filename) {
 
         int numFields = sscanf(line, "%x %s %s %s", &id, mnemonic, operands, extras);
 
-        if (numFields < 2) {
+        if (numFields == 1) {
+            INFO("Skipping line with empty identifier %d: %s", line_count, line);
+        } else if (numFields < 2) {
             ERROR("Invalid line format at line %d: %s", line_count, line);
             continue;
         }

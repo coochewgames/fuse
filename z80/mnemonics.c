@@ -72,6 +72,8 @@ const char *get_mnemonic_name(Z80_MNEMONIC mnemonic) {
         case INDR: return "INDR";
         case OTDR: return "OTDR";
         case IM: return "IM";
+        case SHIFT: return "shift";
+        case SLTTRAP: return "slttrap";
         default: return "UNKNOWN";    // Unknown mnemonic
     }
 }
@@ -144,6 +146,8 @@ Z80_MNEMONIC get_mnemonic_enum(const char *mnemonic) {
     if (strcmp(mnemonic, "INDR") == 0) return INDR;
     if (strcmp(mnemonic, "OTDR") == 0) return OTDR;
     if (strcmp(mnemonic, "IM") == 0) return IM;
+    if (strcmp(mnemonic, "shift") == 0) return SHIFT;
+    if (strcmp(mnemonic, "slttrap") == 0) return SLTTRAP;
 
     return UNKNOWN_MNEMONIC;
 }

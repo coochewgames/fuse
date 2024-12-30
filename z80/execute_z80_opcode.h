@@ -40,6 +40,7 @@ void op_LDDR(void);
 void op_CPDR(void);
 void op_INDR(void);
 void op_OTDR(void);
+void op_SLTTRAP(void);
 
 // Function prototypes for opcodes with one parameter
 void op_INC(const char *value);
@@ -63,6 +64,7 @@ void op_DJNZ(const char *value);
 void op_JR(const char *value);
 void op_SLL(const char *value);
 void op_IM(const char *value);
+void op_SHIFT(const char *value);
 
 // Function prototypes for opcodes with two parameters
 void op_LD(const char *value1, const char *value2);
