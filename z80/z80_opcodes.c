@@ -90,8 +90,6 @@ static Z80_OP_FUNC_LOOKUP z80_op_func_lookup[] = {
 Z80_OPS z80_ops_set[OPCODE_SET_NUM];
 
 
-static Z80_OP_FUNC_LOOKUP get_z80_op_func(Z80_MNEMONIC op);
-
 /*
  *  The enum values for the Z80_OP_SET_TYPE match the index of the Z80_OP_SET_NAME in the z80_ops_sets_list.
  */
@@ -115,7 +113,7 @@ bool init_op_sets(void) {
     return true;
 }
 
-static Z80_OP_FUNC_LOOKUP get_z80_op_func(Z80_MNEMONIC op) {
+Z80_OP_FUNC_LOOKUP get_z80_op_func(Z80_MNEMONIC op) {
     Z80_OP_FUNC_LOOKUP z80_op_func = { 0 };
 
     for (int i = 0; z80_op_func_lookup[i].op != 0; i++) {

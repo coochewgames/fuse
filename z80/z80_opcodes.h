@@ -69,5 +69,6 @@ extern Z80_OPS z80_ops_set[];
 
 
 bool init_op_sets(void);
+Z80_OP_FUNC_LOOKUP get_z80_op_func(Z80_MNEMONIC op);
 
 #endif // Z80_OPCODES_H

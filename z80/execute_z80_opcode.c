@@ -312,3 +312,277 @@ static FLAG_MAPPING get_flag_mapping(const char *condition) {
     
     return found_flag_mapping;
 }
+
+#include <stdio.h>
+#include "execute_z80_opcode.h"
+
+// Function implementations for opcodes with no parameters
+void op_NOP(void) {
+    printf("op_NOP called\n");
+}
+
+void op_RLCA(void) {
+    printf("op_RLCA called\n");
+}
+
+void op_RRCA(void) {
+    printf("op_RRCA called\n");
+}
+
+void op_RLA(void) {
+    printf("op_RLA called\n");
+}
+
+void op_RRA(void) {
+    printf("op_RRA called\n");
+}
+
+void op_DAA(void) {
+    printf("op_DAA called\n");
+}
+
+void op_CPL(void) {
+    printf("op_CPL called\n");
+}
+
+void op_SCF(void) {
+    printf("op_SCF called\n");
+}
+
+void op_CCF(void) {
+    printf("op_CCF called\n");
+}
+
+void op_HALT(void) {
+    printf("op_HALT called\n");
+}
+
+void op_RET(void) {
+    printf("op_RET called\n");
+}
+
+void op_NEG(void) {
+    printf("op_NEG called\n");
+}
+
+void op_RETN(void) {
+    printf("op_RETN called\n");
+}
+
+void op_RRD(void) {
+    printf("op_RRD called\n");
+}
+
+void op_RLD(void) {
+    printf("op_RLD called\n");
+}
+
+void op_LDI(void) {
+    printf("op_LDI called\n");
+}
+
+void op_DI(void) {
+    printf("op_DI called\n");
+}
+
+void op_EI(void) {
+    printf("op_EI called\n");
+}
+
+void op_EXX(void) {
+    printf("op_EXX called\n");
+}
+
+void op_CPI(void) {
+    printf("op_CPI called\n");
+}
+
+void op_INI(void) {
+    printf("op_INI called\n");
+}
+
+void op_OUTI(void) {
+    printf("op_OUTI called\n");
+}
+
+void op_LDD(void) {
+    printf("op_LDD called\n");
+}
+
+void op_CPD(void) {
+    printf("op_CPD called\n");
+}
+
+void op_IND(void) {
+    printf("op_IND called\n");
+}
+
+void op_OUTD(void) {
+    printf("op_OUTD called\n");
+}
+
+void op_LDIR(void) {
+    printf("op_LDIR called\n");
+}
+
+void op_CPIR(void) {
+    printf("op_CPIR called\n");
+}
+
+void op_INIR(void) {
+    printf("op_INIR called\n");
+}
+
+void op_OTIR(void) {
+    printf("op_OTIR called\n");
+}
+
+void op_LDDR(void) {
+    printf("op_LDDR called\n");
+}
+
+void op_CPDR(void) {
+    printf("op_CPDR called\n");
+}
+
+void op_INDR(void) {
+    printf("op_INDR called\n");
+}
+
+void op_OTDR(void) {
+    printf("op_OTDR called\n");
+}
+
+// Function implementations for opcodes with one parameter
+void op_INC(const char *value) {
+    printf("op_INC called with value: %s\n", value);
+}
+
+void op_DEC(const char *value) {
+    printf("op_DEC called with value: %s\n", value);
+}
+
+void op_SUB(const char *value) {
+    printf("op_SUB called with value: %s\n", value);
+}
+
+void op_AND(const char *value) {
+    printf("op_AND called with value: %s\n", value);
+}
+
+void op_XOR(const char *value) {
+    printf("op_XOR called with value: %s\n", value);
+}
+
+void op_OR(const char *value) {
+    printf("op_OR called with value: %s\n", value);
+}
+
+void op_CP(const char *value) {
+    printf("op_CP called with value: %s\n", value);
+}
+
+void op_POP(const char *value) {
+    printf("op_POP called with value: %s\n", value);
+}
+
+void op_PUSH(const char *value) {
+    printf("op_PUSH called with value: %s\n", value);
+}
+
+void op_RST(const char *value) {
+    printf("op_RST called with value: %s\n", value);
+}
+
+void op_RL(const char *value) {
+    printf("op_RL called with value: %s\n", value);
+}
+
+void op_RR(const char *value) {
+    printf("op_RR called with value: %s\n", value);
+}
+
+void op_SLA(const char *value) {
+    printf("op_SLA called with value: %s\n", value);
+}
+
+void op_SRA(const char *value) {
+    printf("op_SRA called with value: %s\n", value);
+}
+
+void op_SRL(const char *value) {
+    printf("op_SRL called with value: %s\n", value);
+}
+
+void op_RLC(const char *value) {
+    printf("op_RLC called with value: %s\n", value);
+}
+
+void op_RRC(const char *value) {
+    printf("op_RRC called with value: %s\n", value);
+}
+
+void op_DJNZ(const char *value) {
+    printf("op_DJNZ called with value: %s\n", value);
+}
+
+void op_JR(const char *value) {
+    printf("op_JR called with value: %s\n", value);
+}
+
+void op_SLL(const char *value) {
+    printf("op_SLL called with value: %s\n", value);
+}
+
+void op_IM(const char *value) {
+    printf("op_IM called with value: %s\n", value);
+}
+
+// Function implementations for opcodes with two parameters
+void op_LD(const char *value1, const char *value2) {
+    printf("op_LD called with value1: %s, value2: %s\n", value1, value2);
+}
+
+void op_ADD(const char *value1, const char *value2) {
+    printf("op_ADD called with value1: %s, value2: %s\n", value1, value2);
+}
+
+void op_ADC(const char *value1, const char *value2) {
+    printf("op_ADC called with value1: %s, value2: %s\n", value1, value2);
+}
+
+void op_JP(const char *value1, const char *value2) {
+    printf("op_JP called with value1: %s, value2: %s\n", value1, value2);
+}
+
+void op_CALL(const char *value1, const char *value2) {
+    printf("op_CALL called with value1: %s, value2: %s\n", value1, value2);
+}
+
+void op_SBC(const char *value1, const char *value2) {
+    printf("op_SBC called with value1: %s, value2: %s\n", value1, value2);
+}
+
+void op_EX(const char *value1, const char *value2) {
+    printf("op_EX called with value1: %s, value2: %s\n", value1, value2);
+}
+
+void op_BIT(const char *value1, const char *value2) {
+    printf("op_BIT called with value1: %s, value2: %s\n", value1, value2);
+}
+
+void op_RES(const char *value1, const char *value2) {
+    printf("op_RES called with value1: %s, value2: %s\n", value1, value2);
+}
+
+void op_SET(const char *value1, const char *value2) {
+    printf("op_SET called with value1: %s, value2: %s\n", value1, value2);
+}
+
+void op_IN(const char *value1, const char *value2) {
+    printf("op_IN called with value1: %s, value2: %s\n", value1, value2);
+}
+
+void op_OUT(const char *value1, const char *value2) {
+    printf("op_OUT called with value1: %s, value2: %s\n", value1, value2);
+}

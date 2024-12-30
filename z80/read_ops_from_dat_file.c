@@ -15,6 +15,11 @@ static const int INITIAL_CAPACITY = 10;
 static bool add_op_code(int *capacity, Z80_OP op_code, Z80_OPS *ops);
 
 
+/*
+ *  Read the op codes from the dat files and store them in the Z80_OPS struct.
+ *  The files can skip op codes by leaving gaps in the ID sequence and it can also
+ *  have IDs with no associated op codes.
+ */
 Z80_OPS read_op_codes(const char *filename) {
     Z80_OPS ops = {0};
 
@@ -73,7 +78,7 @@ Z80_OPS read_op_codes(const char *filename) {
 
         op_code.id = (unsigned char)id;
         op_code.op = op;
-        // op_code.op_func_lookup = get_z80_op_func(op);
+        op_code.op_func_lookup = get_z80_op_func(op);
 
         strncpy(op_code.operand_1, operand1, MAX_OPERAND_LENGTH);
         strncpy(op_code.operand_2, operand2, MAX_OPERAND_LENGTH);
