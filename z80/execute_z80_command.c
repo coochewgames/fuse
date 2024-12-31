@@ -16,6 +16,8 @@
 #define FLAG_11 0x0800  // Bit 11 of the result
 
 #define LOWER_THREE_BITS_MASK 0x07
+#define LOWER_NIBBLE_MASK 0x0F
+#define HIGHER_NIBBLE_MASK 0xF0
 #define HALF_CARRY_MASK 0x0F
 #define OVERFLOW_MASK 0x7F
 
@@ -171,7 +173,7 @@ void _INC(libspectrum_byte *value) {
 
     F = (F & FLAG_C) |                      // Preserve the Carry flag
         ( (*value == 0x80) ? FLAG_V : 0 ) | // Set the Overflow flag if the value is 0x80
-        ( (*value & 0x0f) ? 0 : FLAG_H ) |  // Set the Half Carry flag if the lower nibble is 0
+        ( (*value & LOWER_NIBBLE_MASK) ? 0 : FLAG_H ) |  // Set the Half Carry flag if the lower nibble is 0
         sz53_table[*value];                 // Update the Sign, Zero, and Parity flags
     Q = F;
 }

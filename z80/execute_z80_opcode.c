@@ -53,6 +53,7 @@ static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_
 static void cpi_cpd(Z80_MNEMONIC op);
 static void cpir_cpdr(Z80_MNEMONIC op);
 static void inc_dec(Z80_MNEMONIC op, const char *operand);
+static void ini_inir_ind_indr(Z80_MNEMONIC op);
 
 static bool is_DDFD_op(void);
 static libspectrum_byte get_byte_DDFD_value(const char *operand);
@@ -676,6 +677,47 @@ static void inc_dec(Z80_MNEMONIC op, const char *operand) {
         }
     } else {
         ERROR("Unexpected operand found for %s: %s", get_mnemonic_name(op), operand);
+    }
+}
+
+/*
+ * This function can be called by INI, IND, INIR, INDR.
+ */
+static void ini_inir_ind_indr(Z80_MNEMONIC op) {
+    int modifier = (op == INI || op == INIR) ? 1 : -1;
+
+	libspectrum_byte initemp;
+    libspectrum_byte initemp2;
+
+	perform_contend_read_no_mreq(IR, 1);
+	initemp = readport(BC);
+	writebyte(HL, initemp);
+
+    MEMPTR_W = BC + modifier;
+	B--;
+
+    if (op == INI || op == IND) {
+        HL += modifier;
+    }
+
+    initemp2 = initemp + C + modifier;
+
+	F = ( (initemp & 0x80) ? FLAG_N : 0 ) |
+        ( (initemp2 < initemp) ? (FLAG_H | FLAG_C) : 0 ) |
+        ( (parity_table[(initemp2 & 0x07) ^ B]) ? FLAG_P : 0 ) |
+        sz53_table[B];
+	Q = F;
+
+    if (op == INIR || op == INDR) {
+        if (B) {
+            for (int i = 0; i < 5; i++) {
+                perform_contend_read_no_mreq(HL, 1);
+            }
+
+            PC -= 2;
+        }
+
+        HL += modifier;
     }
 }
 
