@@ -639,7 +639,9 @@ static void inc_dec(Z80_MNEMONIC op, const char *operand) {
     int modifier = (op == INC) ? 1 : -1;
 
     if (strlen(operand) == 1) {
-        _INC(get_byte_reg(operand[0]));
+        libspectrum_byte *reg = get_byte_reg(operand[0]);
+
+        (op == INC) ? _INC(reg) : _DEC(reg);
     } else if (strlen(operand) == 2) {
         perform_contend_read_no_mreq(IR, 1);
         perform_contend_read_no_mreq(IR, 1);
@@ -652,24 +654,26 @@ static void inc_dec(Z80_MNEMONIC op, const char *operand) {
 
         (op == INC) ? _INC(&bytetemp) : _DEC(&bytetemp);
 	    writebyte(HL, bytetemp);
-    } else if (strcmp(operand, "(REGISTER+dd)") == 0) {
-        libspectrum_byte offset;
-        libspectrum_byte bytetemp;
+    } else if (is_DDFD_op()) {
+        if (strcmp(operand, "REGISTER") == 0) {
+            libspectrum_word *reg = (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) ? &IX : &IY;
 
-        offset = readbyte(PC);
+            perform_contend_read_no_mreq( IR, 1 );
+	        perform_contend_read_no_mreq( IR, 1 );
 
-        for (int i = 0; i < 5; i++) {
-            perform_contend_read_no_mreq(PC, 1);
+            (*reg) += modifier;
+        } else if (strcmp(operand, "(REGISTER+dd)") == 0) {
+            libspectrum_byte value = get_DDFD_byte_value(operand);
+
+            perform_contend_read_no_mreq(MEMPTR_W, 1);
+            (op == INC) ? _INC(value) : _DEC(value);
+
+        	writebyte(MEMPTR_W, value);
+        } else {
+            libspectrum_byte value = get_DDFD_byte_value(operand);
+
+            (op == INC) ? _INC(value) : _DEC(value);
         }
-
-        PC++;
-        MEMPTR_W = IX + (libspectrum_signed_byte)offset;
-        bytetemp = readbyte(MEMPTR_W);
-
-        perform_contend_read_no_mreq(MEMPTR_W, 1);
-
-        (op == INC) ? _INC(&bytetemp) : _DEC(&bytetemp);
-        writebyte(MEMPTR_W, bytetemp);
     } else {
         ERROR("Unexpected operand found for %s: %s", get_mnemonic_name(op), operand);
     }
