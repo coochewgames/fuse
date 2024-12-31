@@ -13,7 +13,7 @@ typedef struct {
 } ADDRESS_OPERAND;
 
 
-libspectrum_byte get_DD_value(void);
+libspectrum_byte get_dd_offset_value(libspectrum_word register_value);
 libspectrum_byte get_byte_value(char *operand);
 libspectrum_byte get_byte_reg_value(char reg);
 libspectrum_byte *get_byte_reg(char reg);

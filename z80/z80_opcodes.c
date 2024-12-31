@@ -7,12 +7,13 @@
 
 #include "../logging.h"
 
+
 static Z80_OP_SET_NAME z80_ops_sets_list[] = {
-    { OPCODE_BASE, "opcodes_base.dat" },
-    { OPCODE_CB, "opcodes_cb.dat" },
-    { OPCODE_DDFD, "opcodes_ddfd.dat" },
-    { OPCODE_DDFDCB, "opcodes_ddfdcb.dat" },
-    { OPCODE_ED, "opcodes_ed.dat" },
+    { OP_SET_BASE, "opcodes_base.dat" },
+    { OP_SET_CB, "opcodes_cb.dat" },
+    { OP_SET_DDFD, "opcodes_ddfd.dat" },
+    { OP_SET_DDFDCB, "opcodes_ddfdcb.dat" },
+    { OP_SET_ED, "opcodes_ed.dat" },
     { 0, NULL }
 };
 
@@ -89,7 +90,7 @@ static Z80_OP_FUNC_LOOKUP z80_op_func_lookup[] = {
     { 0, 0, {NULL} } // Sentinel value to mark the end of the array
 };
 
-Z80_OPS z80_ops_set[OPCODE_SET_NUM];
+Z80_OPS z80_ops_set[OP_SET_NUM];
 
 
 /*
@@ -97,8 +98,8 @@ Z80_OPS z80_ops_set[OPCODE_SET_NUM];
  */
 bool init_op_sets(void) {
     for (int enum_pos = 0; z80_ops_sets_list[enum_pos].name != NULL; enum_pos++) {
-        if (enum_pos != z80_ops_sets_list[enum_pos].set) {
-            FATAL("Invalid set configuration found for %s: %d", z80_ops_sets_list[enum_pos].name, z80_ops_sets_list[enum_pos].set);
+        if (enum_pos != z80_ops_sets_list[enum_pos].set_type) {
+            FATAL("Invalid set configuration found for %s: %d", z80_ops_sets_list[enum_pos].name, z80_ops_sets_list[enum_pos].set_type);
             return false;
         }
 
@@ -125,6 +126,22 @@ Z80_OP_FUNC_LOOKUP get_z80_op_func(Z80_MNEMONIC op) {
     }
     
     return z80_op_func;
+}
+
+void call_z80_op_func(Z80_OP op) {
+    switch (op.op_func_lookup.function_type) {
+        case OP_TYPE_NO_PARAMS:
+            op.op_func_lookup.func.no_params();
+            break;
+        case OP_TYPE_ONE_PARAM:
+            op.op_func_lookup.func.one_param(op.operand_1);
+            break;
+        case OP_TYPE_TWO_PARAMS:
+            op.op_func_lookup.func.two_params(op.operand_1, op.operand_2);
+            break;
+        default:
+            ERROR("Unexpected function type found for %s: %d", get_mnemonic_name(op.op), op.op_func_lookup.function_type);
+    }
 }
 
 #ifdef TEST_READ_OPS_FROM_DAT_FILE

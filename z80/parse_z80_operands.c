@@ -5,13 +5,13 @@
 #include "logging.h"
 
 
-libspectrum_byte get_DD_value(void) {
-    libspectrum_byte offset = readbyte( PC );
+libspectrum_byte get_dd_offset_value(libspectrum_word register_value) {
+    libspectrum_byte offset = readbyte(PC);
 
     perform_contend_read_no_mreq_iterations(PC, 5);
 
     PC++;
-	MEMPTR_W = IX + (libspectrum_signed_byte)offset;  // IX is a 16-bit register used by DD prefixed instructions
+	MEMPTR_W = register_value + (libspectrum_signed_byte)offset;
 	return readbyte(MEMPTR_W);
 }
 
@@ -68,6 +68,22 @@ libspectrum_byte get_byte_reg_value(char reg) {
         }
 
     return value;
+}
+
+libspectrum_byte get_byte_ddfd_reg_value(char *reg) {
+    libspectrum_byte value = 0;
+
+    if (strcmp(reg, "IXL") == 0) {
+        value = IXL;
+    } else if (strcmp(reg, "IXH") == 0) {
+        value = IXH;
+    } else if (strcmp(reg, "IYL") == 0) {
+        value = IYL;
+    } else if (strcmp(reg, "IYH") == 0) {
+        value = IYH;
+    } else {
+        ERROR("Unexpected byte DDFD register found: %s", reg);
+    }
 }
 
 libspectrum_byte *get_byte_reg(char reg) {

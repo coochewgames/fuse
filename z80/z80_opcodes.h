@@ -4,7 +4,6 @@
 #include <stdbool.h>
 
 #include "mnemonics.h"
-//#include "execute_z80_opcode.h"
 
 /*
  *  These can consist of larger strings than the actual operand
@@ -36,7 +35,7 @@ typedef struct {
 } Z80_OP_FUNC_LOOKUP;
 
 typedef struct {
-    unsigned char id;
+    unsigned char id;  // The opcode ID matches the position in the Z80_OPS sparse array
 
     Z80_MNEMONIC op;
     Z80_OP_FUNC_LOOKUP op_func_lookup;
@@ -48,20 +47,20 @@ typedef struct {
 
 typedef struct {
     int num_op_codes;
-    Z80_OP *op_codes;
+    Z80_OP *op_codes;  // Sparse array of op codes with the opcode ID as the index
 } Z80_OPS;
 
 typedef enum {
-    OPCODE_BASE = 0,
-    OPCODE_CB,
-    OPCODE_DDFD,
-    OPCODE_DDFDCB,
-    OPCODE_ED,
-    OPCODE_SET_NUM
+    OP_SET_BASE = 0,
+    OP_SET_CB,
+    OP_SET_DDFD,
+    OP_SET_DDFDCB,
+    OP_SET_ED,
+    OP_SET_NUM
 } Z80_OP_SET_TYPE;
 
 typedef struct {
-    Z80_OP_SET_TYPE set;
+    Z80_OP_SET_TYPE set_type;
     char *name;
 } Z80_OP_SET_NAME;
 
@@ -70,5 +69,6 @@ extern Z80_OPS z80_ops_set[];
 
 bool init_op_sets(void);
 Z80_OP_FUNC_LOOKUP get_z80_op_func(Z80_MNEMONIC op);
+void call_z80_op_func(Z80_OP op);
 
 #endif // Z80_OPCODES_H

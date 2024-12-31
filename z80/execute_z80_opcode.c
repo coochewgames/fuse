@@ -1,16 +1,28 @@
 #include <string.h>
 #include <stdbool.h>
+
 #include <libspectrum.h>
 
 #include "z80.h"
 #include "z80_macros.h"
 #include "../memory_pages.h"
 
+#include "z80_opcodes.h"
 #include "parse_z80_operands.h"
 #include "execute_z80_opcode.h"
 #include "execute_z80_command.h"
 #include "logging.h"
 
+
+typedef enum {
+    CURRENT_OP_BASE = 0,
+    CURRENT_OP_FD,
+    CURRENT_OP_DD,
+    CURRENT_OP_ED,
+    CURRENT_OP_CB,
+    CURRENT_OP_FDCB,
+    CURRENT_OP_DDCB
+} CURRENT_OP;
 
 typedef struct {
     const char *condition;
@@ -30,291 +42,25 @@ static FLAG_MAPPING flag_lookup[] = {
     { 0 }
 };
 
+static CURRENT_OP current_op = CURRENT_OP_BASE;
+
+
 static void arithmetic_logical(Z80_MNEMONIC op, const char *operand_1, const char *operand_2);
+static void arithmetic_logical_byte(Z80_MNEMONIC op, const char *operand_2);
+static void arithmetic_logical_word(Z80_MNEMONIC op, const char *operand_1, const char *operand_2);
+
 static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_2);
+static void cpi_cpd(Z80_MNEMONIC op);
+static void cpir_cpdr(Z80_MNEMONIC op);
+static void inc_dec(Z80_MNEMONIC op, const char *operand);
+
+static bool is_DDFD_op(void);
+static libspectrum_byte get_byte_DDFD_value(const char *operand);
+static libspectrum_word get_DDFD_word_value(const char *operand);
 
 static bool is_flag_true(const char *condition);
 static FLAG_MAPPING get_flag_mapping(const char *condition);
 
-
-/*
- *  The following functions are called by Op Codes below and performs the necessary operations
- *  by calling the commands in `execute_z80_command.c`.
- * 
- *  These functions should not call a further operand function in this file.
- */
-
-/*
- *  This can be called by ADC, ADD, AND, CP, OR, SBC, SUB, XOR.
- *
- *  TODO: This will have the DD instructions removed and transferred to the CB, FD, DD and ED
- *  specific functions.
- */
-static void arithmetic_logical(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
-    libspectrum_byte operand_2_value = 0;
-    char *op_1 = strdup(operand_1);
-    char *op_2 = strdup(operand_2);
-
-    /*
-     *  In Z80 assembly, if only operand_1 is provided then the code assumes that the operation uses the accumulator register A.
-     */
-    if (op_2 == NULL || strlen(op_2) == 0) {
-        strcpy(op_2, op_1);
-        strcpy(op_1, "A");
-    }
-
-    if (strlen(op_1) == 1) {
-        if (op_1[0] != 'A') {
-            ERROR("Unexpected operand 1 found, expected 'A': %s", op_1);
-
-            free(op_1);
-            free(op_2);
-            return;
-        }
-
-        if (strcmp(op_2, "(REGISTER+dd)") == 0) {
-            operand_2_value = get_DD_value();
-        } else if (strcmp(op_2, "(HL)") == 0) {
-            operand_2_value = readbyte(HL);
-        } else {
-            operand_2_value = readbyte(PC++);
-
-            if (strlen(op_2) > 0) {
-                WARNING("Unused operand 2 found for %s: %s", get_mnemonic_name(op), op_2);
-            }
-        }
-
-        switch(op) {
-            case ADD:
-                _ADD(operand_2_value);
-                break;
-            case ADC:
-                _ADC(operand_2_value);
-                break;
-            case AND:
-                _AND(operand_2_value);
-                break;
-            case CP:
-                _CP(operand_2_value);
-                break;
-            case SBC:
-                _SBC(operand_2_value);
-                break;
-            case SUB:
-                _SUB(operand_2_value);
-                break;
-            case OR:
-                _OR(operand_2_value);
-                break;
-            default:
-                ERROR("Unexpected operation found with register operand for %s: %s", get_mnemonic_name(op), operand_2_value);
-        }
-    } else if (strlen(op_1) == 2) {
-        if (strcmp(op_1, "HL") != 0) {
-            WARNING("Unexpected operand 2 found for %s: %s", get_mnemonic_name(op), op_2);
-        }
-
-        libspectrum_word operand_1_value = get_word_reg_value(op_1);
-
-        perform_contend_read_no_mreq_iterations(IR, 7);
-
-        switch(op) {
-            case ADD:
-                if (strlen(operand_2) != 2) {
-                    WARNING("Unexpected register in operand 2 found for ADD: %s", op_2);
-                } else {
-                    _ADD16(operand_1_value, get_word_reg_value(op_2));
-                }
-                break;
-            case ADC:
-                _ADC16(operand_1_value);
-                break;
-            case SBC:
-                _SBC16(operand_1_value);
-                break;
-            default:
-                ERROR("Unexpected operation found with 16-bit register operand for %s: %s", get_mnemonic_name(op), op_1);
-        }
-    } else {
-        ERROR("Unexpected operand 1 found for %s: %s", get_mnemonic_name(op), op_1);
-    }
-
-    free(op_1);
-    free(op_2);
-}
-
-/*
- *  This can be called by CALL, JP
- */
-static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
-    const char *condition = operand_1;
-    const char *offset = operand_2;
-
-    MEMPTR_L= readbyte(PC++);
-    MEMPTR_H = readbyte(PC);
-
-    if (offset == NULL || strlen(offset) == 0 || is_flag_true(operand_1)) {
-        switch(op) {
-            case CALL:
-                _CALL();
-                break;
-            case JP:
-                _JP();
-                break;
-            default:
-                ERROR("Unexpected operation called call_jp: %s", get_mnemonic_name(op));
-        }
-    } else {
-        PC++;
-    }
-}
-
-static void cpi_cpd(Z80_MNEMONIC op) {
-	libspectrum_byte value = readbyte(HL);
-    libspectrum_byte bytetemp = A - value;
-    libspectrum_byte lookup;
-    int modifier = (op == CPI) ? 1 : -1;
-
-    lookup = ( (A & FLAG_3) >> 3 ) |
-        ( (value & FLAG_3) >> 2 ) |
-        ( (bytetemp & FLAG_3) >> 1 );
-
-    for (int i = 0; i < 5; i++) {
-        perform_contend_read_no_mreq(HL, 1);
-    }
-
-    HL += modifier;
-	BC--;
-
-	F = ( F & FLAG_C ) |
-        ( BC ? (FLAG_V | FLAG_N) : FLAG_N ) |
-	    halfcarry_sub_table[lookup] |
-        ( bytetemp ? 0 : FLAG_Z ) |
-	    ( bytetemp & FLAG_S );
-
-	if (F & FLAG_H) {
-        bytetemp--;
-    }
-
-	F |= ( bytetemp & FLAG_3 ) | ( (bytetemp & BIT_1) ? FLAG_5 : 0 );
-	Q = F;
-
-    MEMPTR_W += modifier;
-}
-
-static void cpir_cpdr(Z80_MNEMONIC op) {
-    libspectrum_byte value = readbyte(HL);
-    libspectrum_byte bytetemp = A - value;
-    libspectrum_byte lookup;
-    int modifier = (op == CPIR) ? 1 : -1;
-
-    lookup = ( (A & FLAG_3) >> 3 ) |
-        ( (value & FLAG_3) >> 2 ) |
-        ( (bytetemp & FLAG_3) >> 1 );
-
-    for (int i = 0; i < 5; i++) {
-        perform_contend_read_no_mreq(HL, 1);
-    }
-
-	BC--;
-	F = ( F & FLAG_C ) |
-        ( BC ? (FLAG_V | FLAG_N) : FLAG_N ) |
-	    halfcarry_sub_table[lookup] |
-        ( bytetemp ? 0 : FLAG_Z ) |
-	    ( bytetemp & FLAG_S );
-
-	if (F & FLAG_H) {
-        bytetemp--;
-    }
-
-	F |= ( bytetemp & FLAG_3 ) | ( (bytetemp & BIT_1) ? FLAG_5 : 0 );
-	Q = F;
-
-	if( ( F & ( FLAG_V | FLAG_Z ) ) == FLAG_V ) {
-        for (int i = 0; i < 5; i++) {
-            perform_contend_read_no_mreq(HL, 1);
-        }
-
-        PC -= 2;
-	    MEMPTR_W = PC + 1;
-	} else {
-        MEMPTR_W += modifier;
-	}
-
-    HL += modifier;
-}
-
-/*
- *  To be completed once the shift instructions are implemented
- *
- *  TODO: This will have the DD instructions removed and transferred to the CB, FD, DD and ED
- *  specific functions.
- */
-static void inc_dec(Z80_MNEMONIC op, const char *operand) {
-    int modifier = (op == INC) ? 1 : -1;
-
-    if (strlen(operand) == 1) {
-        _INC(get_byte_reg(operand[0]));
-    } else if (strlen(operand) == 2) {
-        perform_contend_read_no_mreq(IR, 1);
-        perform_contend_read_no_mreq(IR, 1);
-
-        (*get_word_reg(operand)) += modifier;
-    } else if (strcmp(operand, "(HL)") == 0) {
-        libspectrum_byte bytetemp = readbyte(HL);
-
-	    perform_contend_read_no_mreq(HL, 1);
-
-        (op == INC) ? _INC(&bytetemp) : _DEC(&bytetemp);
-	    writebyte(HL, bytetemp);
-    } else if (strcmp(operand, "(REGISTER+dd)") == 0) {
-        libspectrum_byte offset;
-        libspectrum_byte bytetemp;
-
-        offset = readbyte(PC);
-
-        for (int i = 0; i < 5; i++) {
-            perform_contend_read_no_mreq(PC, 1);
-        }
-
-        PC++;
-        MEMPTR_W = IX + (libspectrum_signed_byte)offset;
-        bytetemp = readbyte(MEMPTR_W);
-
-        perform_contend_read_no_mreq(MEMPTR_W, 1);
-
-        (op == INC) ? _INC(&bytetemp) : _DEC(&bytetemp);
-        writebyte(MEMPTR_W, bytetemp);
-    } else {
-        ERROR("Unexpected operand found for %s: %s", get_mnemonic_name(op), operand);
-    }
-}
-
-static bool is_flag_true(const char *condition) {
-    FLAG_MAPPING flag_mapping = get_flag_mapping(condition);
-
-    if ((flag_mapping.is_not && !(F & flag_mapping.flag)) ||
-        (!flag_mapping.is_not && (F & flag_mapping.flag))) {
-        return true;
-    }
-
-    return false;
-}
-
-static FLAG_MAPPING get_flag_mapping(const char *condition) {
-    FLAG_MAPPING found_flag_mapping = { 0 };
-
-    for (int i = 0; flag_lookup[i].condition != NULL; i++) {
-        if (strcmp(flag_lookup[i].condition, condition) == 0) {
-            found_flag_mapping = flag_lookup[i];
-        }
-    }
-    
-    return found_flag_mapping;
-}
-
-#include <stdio.h>
-#include "execute_z80_opcode.h"
 
 // Function implementations for opcodes with no parameters
 void op_NOP(void) {
@@ -542,8 +288,68 @@ void op_IM(const char *value) {
     printf("op_IM called with value: %s\n", value);
 }
 
+/*
+ *  The shift instruction utilises the parameter to determine which op codes set to utilise.
+ *  DD instructions use the IX register.
+ *  FD instructions use the IY register.
+ *  CB instructions represent a group of extended instructions that primarily deal with bit manipulation, shifting and rotating operations.
+ *  ED instructions are used for the extended instructions that do not fit into the other categories.
+ *
+ *  DD or FD can also shift again to use CB instructions.
+ */
 void op_SHIFT(const char *value) {
-    printf("op_SHIFT called with value: %s\n", value);
+    if (strcmp(value, "DDFDCB") == 0) {
+        //  This is only called by the DD or FD instruction set to utilise the CB instruction set.
+        libspectrum_word register_value = (current_op == CURRENT_OP_DD) ? IX : IY;
+        Z80_OP op;
+
+	    perform_contend_read(PC, 3);
+	    MEMPTR_W = register_value + (libspectrum_signed_byte)readbyte_internal(PC);
+	    PC++;
+        perform_contend_read(PC, 3);
+
+	    libspectrum_byte opcode_id = readbyte_internal(PC);
+	    perform_contend_read_no_mreq(PC, 1);
+        perform_contend_read_no_mreq(PC, 1);
+        PC++;
+
+        current_op = (current_op == CURRENT_OP_DD) ? CURRENT_OP_DDCB : CURRENT_OP_FDCB;
+        op = z80_ops_set[OP_SET_DDFDCB].op_codes[opcode_id];
+
+        call_z80_op_func(op);
+    } else {
+	    perform_contend_read(PC, 4);
+
+	    libspectrum_byte opcode_id = readbyte_internal(PC);
+        Z80_OP op;
+
+        PC++;
+	    R++;
+
+        if (strcmp(value, "DD") == 0) {
+            current_op = CURRENT_OP_DD;
+            op = z80_ops_set[OP_SET_DDFD].op_codes[opcode_id];
+            set_dd_operands(op);
+        } else if (strcmp(value, "FD") == 0) {
+            current_op = CURRENT_OP_FD;
+            op = z80_ops_set[OP_SET_DDFD].op_codes[opcode_id];
+            set_dd_operands(op);
+        } else if (strcmp(value, "CB") == 0) {
+            current_op = CURRENT_OP_CB;
+            op = z80_ops_set[OP_SET_CB].op_codes[opcode_id];
+        } else if (strcmp(value, "ED") == 0) {
+            current_op = CURRENT_OP_ED;
+            op = z80_ops_set[OP_SET_ED].op_codes[opcode_id];
+        } else {
+            ERROR("Unexpected value found for op_SHIFT: %s", value);
+            return;
+        }
+
+        call_z80_op_func(op);
+
+        //  The shift is complete, so reset the current_op to the base set.
+        current_op = CURRENT_OP_BASE;
+    }
 }
 
 // Function implementations for opcodes with two parameters
@@ -593,4 +399,357 @@ void op_IN(const char *value1, const char *value2) {
 
 void op_OUT(const char *value1, const char *value2) {
     printf("op_OUT called with value1: %s, value2: %s\n", value1, value2);
+}
+
+/*
+ *  The following functions are called by Op Codes below and performs the necessary operations
+ *  by calling the commands in `execute_z80_command.c`.
+ * 
+ *  These functions should not call a further operand function in this file.
+ */
+
+/*
+ *  This can be called by ADC, ADD, AND, CP, OR, SBC, SUB, XOR.
+ */
+static void arithmetic_logical(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
+    char *op_1 = strdup(operand_1);
+    char *op_2 = strdup(operand_2);
+
+    /*
+     *  In Z80 assembly, if only operand_1 is provided then the code assumes that the
+     *  operation uses the accumulator register A.
+     */
+    if (op_2 == NULL || strlen(op_2) == 0) {
+        strcpy(op_2, op_1);
+        strcpy(op_1, "A");
+    }
+
+    /*
+     *  All the operations utilise the accumulator register A as the first operand for
+     *  single byte instructions.
+     */
+    if (strlen(op_1) == 1 && op_1[0] != 'A') {
+        ERROR("Unexpected single register operand 1 found, expected 'A': %s", op_1);
+
+        free(op_1);
+        free(op_2);
+        return;
+    }
+
+    if (strlen(op_1) == 1) {
+        arithmetic_logical_byte(op, op_2);
+    } else if (strlen(op_1) == 2) {
+        arithmetic_logical_word(op, op_1, op_2);
+    } else {
+        ERROR("Unexpected operand 1 length found for %s: %s", get_mnemonic_name(op), op_1);
+    }
+
+    free(op_1);
+    free(op_2);
+}
+
+static void arithmetic_logical_byte(Z80_MNEMONIC op, const char *operand_2) {
+    libspectrum_byte operand_2_value = 0;
+
+    if (is_DDFD_op()) {
+        operand_2_value = get_byte_DDFD_value(operand_2);
+    }
+    else if (strlen(operand_2) == 1) {
+        operand_2_value = get_byte_reg_value(operand_2);
+    }
+    else {
+        if (strcmp(operand_2, "(HL)") == 0) {
+            operand_2_value = readbyte(HL);
+        } else {
+            //  The "nn" operand entails that the byte value is read from the PC address.
+            if (strlen(operand_2) > 0 && strcmp(operand_2, "nn") != 0) {
+                WARNING("Unused operand 2 found for %s: %s", get_mnemonic_name(op), operand_2);
+            }
+
+            operand_2_value = readbyte(PC++);
+        }
+    }
+
+    switch(op) {
+        case ADD:
+            _ADD(operand_2_value);
+            break;
+        case ADC:
+            _ADC(operand_2_value);
+            break;
+        case AND:
+            _AND(operand_2_value);
+            break;
+        case CP:
+            _CP(operand_2_value);
+            break;
+        case SBC:
+            _SBC(operand_2_value);
+            break;
+        case SUB:
+            _SUB(operand_2_value);
+            break;
+        case OR:
+            _OR(operand_2_value);
+            break;
+        default:
+            ERROR("Unexpected operation found with register operand for %s: %s", get_mnemonic_name(op), operand_2_value);
+    }
+}
+
+static void arithmetic_logical_word(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
+    libspectrum_byte operand_2_value = 0;
+
+    if (strcmp(operand_2, "HL") != 0) {
+        WARNING("Expected operand 2 to be HL for %s: Found %s", get_mnemonic_name(op), operand_2);
+    }
+
+    libspectrum_word operand_1_value = get_word_reg_value(operand_1);
+
+    perform_contend_read_no_mreq_iterations(IR, 7);
+
+    switch(op) {
+        case ADD:
+            if (strlen(operand_2) != 2) {
+                WARNING("Unexpected register in operand 2 found for ADD16: %s", operand_2);
+            } else {
+                _ADD16(operand_1_value, get_word_reg_value(operand_2));
+            }
+            break;
+        case ADC:
+            _ADC16(operand_1_value);
+            break;
+        case SBC:
+            _SBC16(operand_1_value);
+            break;
+        default:
+            ERROR("Unexpected operation found with 16-bit register operand for %s: %s", get_mnemonic_name(op), operand_1);
+    }
+}
+
+/*
+ *  This can be called by CALL, JP
+ */
+static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
+    const char *condition = operand_1;
+    const char *offset = operand_2;
+
+    MEMPTR_L= readbyte(PC++);
+    MEMPTR_H = readbyte(PC);
+
+    if (offset == NULL || strlen(offset) == 0 || is_flag_true(operand_1)) {
+        switch(op) {
+            case CALL:
+                _CALL();
+                break;
+            case JP:
+                _JP();
+                break;
+            default:
+                ERROR("Unexpected operation called call_jp: %s", get_mnemonic_name(op));
+        }
+    } else {
+        PC++;
+    }
+}
+
+static void cpi_cpd(Z80_MNEMONIC op) {
+	libspectrum_byte value = readbyte(HL);
+    libspectrum_byte bytetemp = A - value;
+    libspectrum_byte lookup;
+    int modifier = (op == CPI) ? 1 : -1;
+
+    lookup = ( (A & FLAG_3) >> 3 ) |
+        ( (value & FLAG_3) >> 2 ) |
+        ( (bytetemp & FLAG_3) >> 1 );
+
+    for (int i = 0; i < 5; i++) {
+        perform_contend_read_no_mreq(HL, 1);
+    }
+
+    HL += modifier;
+	BC--;
+
+	F = ( F & FLAG_C ) |
+        ( BC ? (FLAG_V | FLAG_N) : FLAG_N ) |
+	    halfcarry_sub_table[lookup] |
+        ( bytetemp ? 0 : FLAG_Z ) |
+	    ( bytetemp & FLAG_S );
+
+	if (F & FLAG_H) {
+        bytetemp--;
+    }
+
+	F |= ( bytetemp & FLAG_3 ) | ( (bytetemp & BIT_1) ? FLAG_5 : 0 );
+	Q = F;
+
+    MEMPTR_W += modifier;
+}
+
+static void cpir_cpdr(Z80_MNEMONIC op) {
+    libspectrum_byte value = readbyte(HL);
+    libspectrum_byte bytetemp = A - value;
+    libspectrum_byte lookup;
+    int modifier = (op == CPIR) ? 1 : -1;
+
+    lookup = ( (A & FLAG_3) >> 3 ) |
+        ( (value & FLAG_3) >> 2 ) |
+        ( (bytetemp & FLAG_3) >> 1 );
+
+    for (int i = 0; i < 5; i++) {
+        perform_contend_read_no_mreq(HL, 1);
+    }
+
+	BC--;
+	F = ( F & FLAG_C ) |
+        ( BC ? (FLAG_V | FLAG_N) : FLAG_N ) |
+	    halfcarry_sub_table[lookup] |
+        ( bytetemp ? 0 : FLAG_Z ) |
+	    ( bytetemp & FLAG_S );
+
+	if (F & FLAG_H) {
+        bytetemp--;
+    }
+
+	F |= ( bytetemp & FLAG_3 ) | ( (bytetemp & BIT_1) ? FLAG_5 : 0 );
+	Q = F;
+
+	if( ( F & ( FLAG_V | FLAG_Z ) ) == FLAG_V ) {
+        for (int i = 0; i < 5; i++) {
+            perform_contend_read_no_mreq(HL, 1);
+        }
+
+        PC -= 2;
+	    MEMPTR_W = PC + 1;
+	} else {
+        MEMPTR_W += modifier;
+	}
+
+    HL += modifier;
+}
+
+/*
+ *  To be completed once the shift instructions are implemented
+ *
+ *  TODO: This will have the DD instructions removed and transferred to the CB, FD, DD and ED
+ *  specific functions.
+ */
+static void inc_dec(Z80_MNEMONIC op, const char *operand) {
+    int modifier = (op == INC) ? 1 : -1;
+
+    if (strlen(operand) == 1) {
+        _INC(get_byte_reg(operand[0]));
+    } else if (strlen(operand) == 2) {
+        perform_contend_read_no_mreq(IR, 1);
+        perform_contend_read_no_mreq(IR, 1);
+
+        (*get_word_reg(operand)) += modifier;
+    } else if (strcmp(operand, "(HL)") == 0) {
+        libspectrum_byte bytetemp = readbyte(HL);
+
+	    perform_contend_read_no_mreq(HL, 1);
+
+        (op == INC) ? _INC(&bytetemp) : _DEC(&bytetemp);
+	    writebyte(HL, bytetemp);
+    } else if (strcmp(operand, "(REGISTER+dd)") == 0) {
+        libspectrum_byte offset;
+        libspectrum_byte bytetemp;
+
+        offset = readbyte(PC);
+
+        for (int i = 0; i < 5; i++) {
+            perform_contend_read_no_mreq(PC, 1);
+        }
+
+        PC++;
+        MEMPTR_W = IX + (libspectrum_signed_byte)offset;
+        bytetemp = readbyte(MEMPTR_W);
+
+        perform_contend_read_no_mreq(MEMPTR_W, 1);
+
+        (op == INC) ? _INC(&bytetemp) : _DEC(&bytetemp);
+        writebyte(MEMPTR_W, bytetemp);
+    } else {
+        ERROR("Unexpected operand found for %s: %s", get_mnemonic_name(op), operand);
+    }
+}
+
+static bool is_DDFD_op(void) {
+    return (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB ||
+            current_op == CURRENT_OP_FD || current_op == CURRENT_OP_FDCB);
+}
+
+static libspectrum_byte get_byte_DDFD_value(const char *operand) {
+    libspectrum_byte value = 0;
+
+    if (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) {
+        if (strcmp(operand, "REGISTERL") == 0) {
+            value = IXL;
+        } else if (strcmp(operand, "REGISTERH") == 0) {
+            value = IXH;
+        } else if (strcmp(operand, "(REGISTER+dd)") == 0) {
+            value = get_dd_offset_value(IX);
+        } else {
+            ERROR("Unexpected DD operand found: %s", operand);
+        }
+    } else if (current_op == CURRENT_OP_FD || current_op == CURRENT_OP_FDCB) {
+        if (strcmp(operand, "REGISTERL") == 0) {
+            value = IYL;
+        } else if (strcmp(operand, "REGISTERH") == 0) {
+            value = IYH;
+        } else if (strcmp(operand, "(REGISTER+dd)") == 0) {
+            value = get_dd_offset_value(IY);
+        } else {
+            ERROR("Unexpected FD operand found: %s", operand);
+        }
+    } else {
+        ERROR("Unexpected current_op found: %d", current_op);
+    }
+
+    return value;
+}
+
+static libspectrum_word get_DDFD_word_value(const char *operand) {
+    libspectrum_word value = 0;
+
+    if (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) {
+        if (strcmp(operand, "REGISTER") == 0) {
+            value = IX;
+        } else {
+            ERROR("Unexpected DD register found: %s", operand);
+        }
+    } else if (current_op == CURRENT_OP_FD || current_op == CURRENT_OP_FDCB) {
+        if (strcmp(operand, "REGISTER") == 0) {
+            value = IY;
+        } else {
+            ERROR("Unexpected FD register found: %s", operand);
+        }
+    } else {
+        ERROR("Unexpected current_op found: %d", current_op);
+    }
+
+    return value;
+}
+
+static bool is_flag_true(const char *condition) {
+    FLAG_MAPPING flag_mapping = get_flag_mapping(condition);
+
+    if ((flag_mapping.is_not && !(F & flag_mapping.flag)) ||
+        (!flag_mapping.is_not && (F & flag_mapping.flag))) {
+        return true;
+    }
+
+    return false;
+}
+
+static FLAG_MAPPING get_flag_mapping(const char *condition) {
+    FLAG_MAPPING found_flag_mapping = { 0 };
+
+    for (int i = 0; flag_lookup[i].condition != NULL; i++) {
+        if (strcmp(flag_lookup[i].condition, condition) == 0) {
+            found_flag_mapping = flag_lookup[i];
+        }
+    }
+    
+    return found_flag_mapping;
 }

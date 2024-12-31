@@ -1,10 +1,6 @@
 #ifndef EXECUTE_Z80_OPCODE_H
 #define EXECUTE_Z80_OPCODE_H
 
-#include <libspectrum.h>
-
-#include "mnemonics.h"
-
 // Function prototypes for opcodes with no parameters
 void op_NOP(void);
 void op_RLCA(void);
