@@ -526,7 +526,7 @@ static void arithmetic_logical_word(Z80_MNEMONIC op, const char *operand_1, cons
 }
 
 /*
- *  This can be called by CALL, JP
+ *  This can be called by CALL, JP.
  */
 static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
     const char *condition = operand_1;
@@ -551,6 +551,9 @@ static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_
     }
 }
 
+/*
+ *  This can be called by CPI, CPD.
+ */
 static void cpi_cpd(Z80_MNEMONIC op) {
 	libspectrum_byte value = readbyte(HL);
     libspectrum_byte bytetemp = A - value;
@@ -584,6 +587,9 @@ static void cpi_cpd(Z80_MNEMONIC op) {
     MEMPTR_W += modifier;
 }
 
+/*
+ *  This can be called by CPIR, CPDR.
+ */
 static void cpir_cpdr(Z80_MNEMONIC op) {
     libspectrum_byte value = readbyte(HL);
     libspectrum_byte bytetemp = A - value;
@@ -627,10 +633,7 @@ static void cpir_cpdr(Z80_MNEMONIC op) {
 }
 
 /*
- *  To be completed once the shift instructions are implemented
- *
- *  TODO: This will have the DD instructions removed and transferred to the CB, FD, DD and ED
- *  specific functions.
+ *  This can be called by INC, DEC.
  */
 static void inc_dec(Z80_MNEMONIC op, const char *operand) {
     int modifier = (op == INC) ? 1 : -1;
