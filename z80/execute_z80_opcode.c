@@ -402,10 +402,8 @@ void op_OUT(const char *value1, const char *value2) {
 }
 
 /*
- *  The following functions are called by Op Codes below and performs the necessary operations
+ *  The following functions are called by Op Codes functions and perform the necessary operations
  *  by calling the commands in `execute_z80_command.c`.
- * 
- *  These functions should not call a further operand function in this file.
  */
 
 /*
