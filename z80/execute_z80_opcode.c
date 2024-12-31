@@ -14,6 +14,9 @@
 #include "logging.h"
 
 
+#define LOWER_THREE_BITS_MASK 0x07
+
+
 typedef enum {
     CURRENT_OP_BASE = 0,
     CURRENT_OP_FD,
@@ -50,8 +53,7 @@ static void arithmetic_logical_byte(Z80_MNEMONIC op, const char *operand_2);
 static void arithmetic_logical_word(Z80_MNEMONIC op, const char *operand_1, const char *operand_2);
 
 static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_2);
-static void cpi_cpd(Z80_MNEMONIC op);
-static void cpir_cpdr(Z80_MNEMONIC op);
+static void cpi_cpir_cpd_cpdr(Z80_MNEMONIC op);
 static void inc_dec(Z80_MNEMONIC op, const char *operand);
 static void ini_inir_ind_indr(Z80_MNEMONIC op);
 
@@ -553,45 +555,9 @@ static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_
 }
 
 /*
- *  This can be called by CPI, CPD.
+ *  This can be called by CPI, CPD, CPIR, CPDR.
  */
-static void cpi_cpd(Z80_MNEMONIC op) {
-	libspectrum_byte value = readbyte(HL);
-    libspectrum_byte bytetemp = A - value;
-    libspectrum_byte lookup;
-    int modifier = (op == CPI) ? 1 : -1;
-
-    lookup = ( (A & FLAG_3) >> 3 ) |
-        ( (value & FLAG_3) >> 2 ) |
-        ( (bytetemp & FLAG_3) >> 1 );
-
-    for (int i = 0; i < 5; i++) {
-        perform_contend_read_no_mreq(HL, 1);
-    }
-
-    HL += modifier;
-	BC--;
-
-	F = ( F & FLAG_C ) |
-        ( BC ? (FLAG_V | FLAG_N) : FLAG_N ) |
-	    halfcarry_sub_table[lookup] |
-        ( bytetemp ? 0 : FLAG_Z ) |
-	    ( bytetemp & FLAG_S );
-
-	if (F & FLAG_H) {
-        bytetemp--;
-    }
-
-	F |= ( bytetemp & FLAG_3 ) | ( (bytetemp & BIT_1) ? FLAG_5 : 0 );
-	Q = F;
-
-    MEMPTR_W += modifier;
-}
-
-/*
- *  This can be called by CPIR, CPDR.
- */
-static void cpir_cpdr(Z80_MNEMONIC op) {
+static void cpi_cpir_cpd_cpdr(Z80_MNEMONIC op) {
     libspectrum_byte value = readbyte(HL);
     libspectrum_byte bytetemp = A - value;
     libspectrum_byte lookup;
@@ -605,6 +571,10 @@ static void cpir_cpdr(Z80_MNEMONIC op) {
         perform_contend_read_no_mreq(HL, 1);
     }
 
+    if (op == CPI || op == CPD) {
+        HL += modifier;
+    }
+
 	BC--;
 	F = ( F & FLAG_C ) |
         ( BC ? (FLAG_V | FLAG_N) : FLAG_N ) |
@@ -619,18 +589,22 @@ static void cpir_cpdr(Z80_MNEMONIC op) {
 	F |= ( bytetemp & FLAG_3 ) | ( (bytetemp & BIT_1) ? FLAG_5 : 0 );
 	Q = F;
 
-	if( ( F & ( FLAG_V | FLAG_Z ) ) == FLAG_V ) {
-        for (int i = 0; i < 5; i++) {
-            perform_contend_read_no_mreq(HL, 1);
+    if (op == CPI || op == CPD) {
+        MEMPTR_W += modifier;
+    } else {
+        if( ( F & ( FLAG_V | FLAG_Z ) ) == FLAG_V ) {
+            for (int i = 0; i < 5; i++) {
+                perform_contend_read_no_mreq(HL, 1);
+            }
+
+            PC -= 2;
+            MEMPTR_W = PC + 1;
+        } else {
+            MEMPTR_W += modifier;
         }
 
-        PC -= 2;
-	    MEMPTR_W = PC + 1;
-	} else {
-        MEMPTR_W += modifier;
-	}
-
-    HL += modifier;
+        HL += modifier;
+    }
 }
 
 /*
@@ -718,6 +692,141 @@ static void ini_inir_ind_indr(Z80_MNEMONIC op) {
         }
 
         HL += modifier;
+    }
+}
+
+/*
+ * This function can be called by LDI, LDD.
+ */
+static void ldi_ldd(Z80_MNEMONIC op) {
+    int modifier = (op == LDI) ? 1 : -1;
+    libspectrum_byte bytetemp = readbyte(HL);
+
+	BC--;
+	writebyte(DE, bytetemp);
+	perform_contend_write_no_mreq(DE, 1);
+    perform_contend_write_no_mreq(DE, 1);
+
+	DE += modifier;
+    HL += modifier;
+	bytetemp += A;
+
+	F = ( F & ( FLAG_C | FLAG_Z | FLAG_S ) ) |
+        ( BC ? FLAG_V : 0 ) |
+	    ( (bytetemp & FLAG_3 ) | ( (bytetemp & BIT_1)) ? FLAG_5 : 0 );
+	Q = F;
+}
+
+/*
+ * This function can be called by LDIR, LDDR.
+ */
+static void ldir_lddr(Z80_MNEMONIC op) {
+    int modifier = (op == LDIR) ? 1 : -1;
+	libspectrum_byte bytetemp=readbyte(HL);
+
+	writebyte(DE, bytetemp);
+	perform_contend_write_no_mreq(DE, 1);
+    perform_contend_write_no_mreq(DE, 1);
+
+	BC--;
+	bytetemp += A;
+
+	F = ( F & ( FLAG_C | FLAG_Z | FLAG_S ) ) |
+        ( BC ? FLAG_V : 0 ) |
+	    ( bytetemp & FLAG_3 ) |
+        ( (bytetemp & BIT_1) ? FLAG_5 : 0 );
+	Q = F;
+
+	if (BC) {
+        for (int i = 0; i < 5; i++) {
+            perform_contend_read_no_mreq(DE, 1);
+        }
+
+        PC -= 2;
+	    MEMPTR_W = PC + 1;
+	}
+
+    HL += modifier;
+    DE += modifier;
+}
+
+/*
+ * This function can be called by OTIR, OTDR.
+ */
+static void otir_otdr(Z80_MNEMONIC op) {
+    int modifier = (op == OTIR) ? 1 : -1;
+	libspectrum_byte outitemp;
+    libspectrum_byte outitemp2;
+
+	perform_contend_read_no_mreq(IR, 1);
+	outitemp = readbyte(HL);
+	B--;    // This does happen first, despite what the specs say
+	MEMPTR_W = BC + modifier;
+	writeport(BC, outitemp);
+
+	HL += modifier;
+    outitemp2 = outitemp + L;
+
+	F = ( (outitemp & 0x80) ? FLAG_N : 0 ) |
+        ( (outitemp2 < outitemp) ? (FLAG_H | FLAG_C) : 0 ) |
+        ( (parity_table[(outitemp2 & LOWER_THREE_BITS_MASK) ^ B]) ? FLAG_P : 0 ) |
+        sz53_table[B];
+	Q = F;
+
+	if (B) {
+        for (int i = 0; i < 5; i++) {
+            perform_contend_read_no_mreq(BC, 1);
+        }
+
+        PC -= 2;
+    }
+}
+
+/*
+ * This function can be called by OUTI, OUTD.
+ */
+static void outi_outd(Z80_MNEMONIC op) {
+    int modifier = (op == OUTI) ? 1 : -1;
+	libspectrum_byte outitemp;
+    libspectrum_byte outitemp2;
+
+	perform_contend_read_no_mreq(IR, 1);
+	outitemp = readbyte(HL);
+	B--;    // This does happen first, despite what the specs say
+	MEMPTR_W = BC + modifier;
+	writeport(BC, outitemp);
+
+	HL += modifier;
+    outitemp2 = outitemp + L;
+
+	F = ( (outitemp & 0x80) ? FLAG_N : 0 ) |
+        ( (outitemp2 < outitemp) ? (FLAG_H | FLAG_C) : 0 ) |
+        ( (parity_table[(outitemp2 & LOWER_THREE_BITS_MASK) ^ B]) ? FLAG_P : 0 ) |
+        sz53_table[B];
+	Q = F;
+}
+
+/*
+ * This function can be called by PUSH, POP.
+ */
+static void push_pop(Z80_MNEMONIC op, const char *operand) {
+    if (is_DDFD_op()) {
+        if (strcmp(operand, "REGISTER") == 0) {
+            if (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) {
+                (op == PUSH) ? _PUSH16(IXL, IXH) : _POP16(&IXL, &IXH);
+            } else {
+                (op == PUSH) ? _PUSH16(IYL, IYH) : _POP16(&IYL, &IYH);
+            }
+        } else {
+            ERROR("Unexpected DDFD register found: %s", operand);
+        }
+    } else if (strlen(operand) == 2) {
+        libspectrum_byte *reg_high = get_byte_reg(operand[0]);
+        libspectrum_byte *reg_low = get_byte_reg(operand[1]);
+
+        (op == PUSH) ? _PUSH16(*reg_low, *reg_high) : _POP16(reg_low, reg_high);
+    } else {
+        ERROR("Unexpected operand found for %s: %s", get_mnemonic_name(op), operand);
     }
 }
 
