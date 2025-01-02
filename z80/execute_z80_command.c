@@ -95,28 +95,28 @@ void _ADD16(libspectrum_dword value1, libspectrum_dword value2) {
     Q = F;
 }
 
-void _BIT(libspectrum_byte bit, libspectrum_byte value) {
+void _BIT(libspectrum_byte bit_position, libspectrum_byte value) {
     F = (F & FLAG_C) | FLAG_H | (value & (FLAG_3 | FLAG_5));
 
-    if (!(value & (0x01 << bit))) {
+    if (!(value & (0x01 << bit_position))) {
         F |= FLAG_P | FLAG_Z;
     }
 
-    if (bit == 7 && (value & FLAG_S)) {
+    if (bit_position == 7 && (value & FLAG_S)) {
         F |= FLAG_S;
     }
 
     Q = F;
 }
 
-void _BIT_MEMPTR(libspectrum_byte bit, libspectrum_byte value) {
+void _BIT_MEMPTR(libspectrum_byte bit_position, libspectrum_byte value) {
     F = (F & FLAG_C) | FLAG_H | ( MEMPTR_H & (FLAG_3 | FLAG_5) );
 
-    if (!(value & (0x01 << bit))) {
+    if (!(value & (0x01 << bit_position))) {
         F |= FLAG_P | FLAG_Z;
     }
 
-    if (bit == 7 && (value & FLAG_S)) {
+    if (bit_position == 7 && (value & FLAG_S)) {
         F |= FLAG_S;
     }
 

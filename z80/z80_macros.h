@@ -106,6 +106,8 @@
 #define MEMPTR_L z80.memptr.b.l   // Low byte of the memory pointer register
 #define MEMPTR_W z80.memptr.w     // Whole memory pointer register
 
+#define HALTED z80.halted  // Halted flag
+
 // Combined Interrupt and Refresh register
 #define IR ( ( z80.i ) << 8 | ( z80.r7 & 0x80 ) | ( z80.r & 0x7f ) )
 

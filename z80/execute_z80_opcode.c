@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include <libspectrum.h>
+#include <spectrum.h>  // Includes tstates and libspectrum.h
 
 #include "z80.h"
 #include "z80_macros.h"
@@ -15,6 +15,8 @@
 
 
 #define LOWER_THREE_BITS_MASK 0x07
+#define TAPE_SAVING_TRAP 0x04d0
+#define TIMEX_2068_SAVE 0x0076
 
 
 typedef enum {
@@ -70,11 +72,239 @@ static void call_rotate_shift_offset_op(Z80_MNEMONIC op, libspectrum_word addres
 static void call_rotate_shift_op(Z80_MNEMONIC op, libspectrum_byte *reg);
 
 static bool is_DDFD_op(void);
-static libspectrum_byte get_byte_DDFD_value(const char *operand);
+static libspectrum_byte get_DDFD_byte_reg_value(const char *operand);
 static libspectrum_word get_DDFD_word_value(const char *operand);
 
 static bool is_flag_true(const char *condition);
 static FLAG_MAPPING get_flag_mapping(const char *condition);
+
+
+/*
+ *  The following functions execute the Z80 instructions and their associated operands from the dat files,
+ *  indexed by their instruction identifier.
+ */
+
+void op_ADC(const char *operand_1, const char *operand_2) {
+    arithmetic_logical(ADC, operand_1, operand_2);
+}
+
+void op_ADD(const char *operand_1, const char *operand_2) {
+    arithmetic_logical(ADD, operand_1, operand_2);
+}
+
+void op_AND(const char *operand_1, const char *operand_2) {
+    arithmetic_logical(AND, operand_1, operand_2);
+}
+
+void op_BIT(const char *operand_1, const char *operand_2) {
+    if (strlen(operand_1) != 1 || operand_1[0] < '0' || operand_1[0] > '7') {
+        ERROR("Expected bit position for operand 1 for BIT: Found this instead %s", operand_1);
+        return;
+    }
+
+    unsigned char bit_position = operand_1[0] - '0';
+
+    if (strlen(operand_2) == 1) {
+        _BIT(bit_position, get_byte_reg_value(operand_2[0]));
+    }
+    else if (strcmp(operand_2, "(HL)") == 0) {
+        libspectrum_byte bytetemp = readbyte(HL);
+
+	    perform_contend_read_no_mreq(HL, 1);
+	    _BIT_MEMPTR(bit_position, bytetemp);
+    }
+    else if (is_DDFD_op()) {
+        if (strcmp(operand_2, "(REGISTER+dd)") == 0) {
+            libspectrum_byte bytetemp = readbyte(MEMPTR_W);
+
+            perform_contend_read_no_mreq(MEMPTR_W, 1);
+            _BIT_MEMPTR(bit_position, bytetemp);
+        } else {
+            ERROR("Unexpected operand 2 for BIT: %s", operand_2);
+        }
+    }
+    else {
+        ERROR("Unexpected operand 2 for BIT: %s", operand_2);
+    }
+}
+
+void op_CALL(const char *operand_1, const char *operand_2) {
+    call_jp(CALL, operand_1, operand_2);
+}
+
+void op_CCF(void) {
+    F = ( F & (FLAG_P | FLAG_Z | FLAG_S) ) |
+        ( (F & FLAG_C) ? FLAG_H : FLAG_C ) |
+        ( (IS_CMOS ? A : ((last_Q ^ F) | A)) & (FLAG_3 | FLAG_5) );
+    Q = F;
+}
+
+void op_CP(const char *operand) {
+    arithmetic_logical(CP, operand, NULL);
+}
+
+void op_CPD(void) {
+    cpi_cpir_cpd_cpdr(CPD);
+}
+
+void op_CPDR(void) {
+    cpi_cpir_cpd_cpdr(CPDR);
+}
+
+void op_CPI(void) {
+    cpi_cpir_cpd_cpdr(CPI);
+}
+
+void op_CPIR(void) {
+    cpi_cpir_cpd_cpdr(CPIR);
+}
+
+void op_CPL(void) {
+    A ^= 0xff;
+    F = ( F & (FLAG_C | FLAG_P | FLAG_Z | FLAG_S) ) |
+        ( A & (FLAG_3 | FLAG_5) ) | (FLAG_N | FLAG_H);
+    Q = F;
+}
+
+void op_DAA(void) {
+	libspectrum_byte add = 0;
+    libspectrum_byte carry = (F & FLAG_C);
+
+	if ((F & FLAG_H) || ((A & 0x0f) > 9)) {
+        add = 6;
+    }
+
+	if (carry || (A > 0x99)) {
+        add |= 0x60;
+    }
+
+	if (A > 0x99) {
+        carry = FLAG_C;
+    }
+
+	if (F & FLAG_N) {
+        _SUB(add);
+	} else {
+	    _ADD(add);
+	}
+
+	F = ( F & ~(FLAG_C | FLAG_P) ) | carry | parity_table[A];
+	Q = F;
+}
+
+void op_DEC(const char *operand) {
+    inc_dec(DEC, operand);
+}
+
+void op_DI(void) {
+    IFF1 = 0;
+    IFF2 = 0;
+}
+
+void op_DJNZ(const char *offset) {
+    //  The offset parameter is not used
+    perform_contend_read_no_mreq(IR, 1);
+    B--;
+
+    if (B) {
+        _JR();
+    } else {
+        perform_contend_read(PC, 3);
+        PC++;
+    }
+}
+
+void op_EI(void) {
+    /*
+     *  Interrupts are not accepted immediately after an EI, but are
+     *  accepted after the next instruction.
+     */
+    IFF1 = 1;
+    IFF2 = 1;
+
+    z80.interrupts_enabled_at = tstates;
+    event_add(tstates + 1, z80_interrupt_event);
+}
+
+void op_EX(const char *operand_1, const char *operand_2) {
+    if (strcmp(operand_1, "AF") == 0 && strcmp(operand_1, "AF'")) {
+        /*
+         *  Tape saving trap: note this traps the EX AF,AF' at #04d0, not #04d1 as the PC has already been incremented.
+         *  0x0076 is the Timex 2068 save routine in EXROM.
+         */
+        if (PC == (TAPE_SAVING_TRAP + 1) || PC == (TIMEX_2068_SAVE + 1)) {
+	        if( tape_save_trap() == 0 ) {
+                return;
+            }
+        }
+        
+        libspectrum_word wordtemp = AF;
+
+        AF = AF_;
+        AF_ = wordtemp;
+    } else if (strcmp(operand_1, "SP") == 0) {
+        libspectrum_byte bytetempl = readbyte(SP);
+        libspectrum_byte bytetemph = readbyte(SP + 1);
+        libspectrum_byte *reg_h;
+        libspectrum_byte *reg_l;
+
+        if (strcmp(operand_2, "HL") == 0) {
+            reg_h = H;
+            reg_l = L;
+        } else if (is_DDFD_op() && strcmp(operand_2, "REGISTER") == 0) {
+            reg_h = (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) ? IXH  : IYH;
+            reg_l = (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) ? IXL : IYL;
+        }
+        else {
+            ERROR("Unexpected operand 2 for EX with SP as operand 1: %s", operand_2);
+            return;
+        }
+
+        perform_contend_read_no_mreq(SP + 1, 1);
+
+        writebyte(SP + 1, *reg_h);
+        writebyte(SP, *reg_l);
+
+        perform_contend_write_no_mreq(SP, 1);
+        perform_contend_write_no_mreq(SP, 1);
+
+        MEMPTR_H = bytetemph;
+        MEMPTR_L = bytetempl;
+
+        *reg_h = bytetemph;
+        *reg_l = bytetempl;
+    } else if (strcmp(operand_1, "DE") == 0 && strcmp(operand_2, "HL") == 0) {
+        libspectrum_word wordtemp = DE;
+
+        DE = HL;
+        HL = wordtemp;
+    } else {
+        ERROR("Unexpected operands for EX: %s, %s", operand_1, operand_2);
+    }
+}
+
+void op_EXX(void) {
+	libspectrum_word wordtemp;
+
+	wordtemp = BC;
+    BC = BC_;
+    BC_ = wordtemp;
+
+	wordtemp = DE;
+    DE = DE_;
+    DE_ = wordtemp;
+
+	wordtemp = HL;
+    HL = HL_;
+    HL_ = wordtemp;
+}
+
+void op_HALT(void) {
+    HALTED = 1;
+    PC--;
+}
+
+
 
 
 // Function implementations for opcodes with no parameters
@@ -98,24 +328,8 @@ void op_RRA(void) {
     printf("op_RRA called\n");
 }
 
-void op_DAA(void) {
-    printf("op_DAA called\n");
-}
-
-void op_CPL(void) {
-    printf("op_CPL called\n");
-}
-
 void op_SCF(void) {
     printf("op_SCF called\n");
-}
-
-void op_CCF(void) {
-    printf("op_CCF called\n");
-}
-
-void op_HALT(void) {
-    printf("op_HALT called\n");
 }
 
 void op_RET(void) {
@@ -142,22 +356,6 @@ void op_LDI(void) {
     printf("op_LDI called\n");
 }
 
-void op_DI(void) {
-    printf("op_DI called\n");
-}
-
-void op_EI(void) {
-    printf("op_EI called\n");
-}
-
-void op_EXX(void) {
-    printf("op_EXX called\n");
-}
-
-void op_CPI(void) {
-    printf("op_CPI called\n");
-}
-
 void op_INI(void) {
     printf("op_INI called\n");
 }
@@ -168,10 +366,6 @@ void op_OUTI(void) {
 
 void op_LDD(void) {
     printf("op_LDD called\n");
-}
-
-void op_CPD(void) {
-    printf("op_CPD called\n");
 }
 
 void op_IND(void) {
@@ -186,10 +380,6 @@ void op_LDIR(void) {
     printf("op_LDIR called\n");
 }
 
-void op_CPIR(void) {
-    printf("op_CPIR called\n");
-}
-
 void op_INIR(void) {
     printf("op_INIR called\n");
 }
@@ -200,10 +390,6 @@ void op_OTIR(void) {
 
 void op_LDDR(void) {
     printf("op_LDDR called\n");
-}
-
-void op_CPDR(void) {
-    printf("op_CPDR called\n");
 }
 
 void op_INDR(void) {
@@ -223,16 +409,8 @@ void op_INC(const char *value) {
     printf("op_INC called with value: %s\n", value);
 }
 
-void op_DEC(const char *value) {
-    printf("op_DEC called with value: %s\n", value);
-}
-
 void op_SUB(const char *value) {
     printf("op_SUB called with value: %s\n", value);
-}
-
-void op_AND(const char *value) {
-    printf("op_AND called with value: %s\n", value);
 }
 
 void op_XOR(const char *value) {
@@ -241,10 +419,6 @@ void op_XOR(const char *value) {
 
 void op_OR(const char *value) {
     printf("op_OR called with value: %s\n", value);
-}
-
-void op_CP(const char *value) {
-    printf("op_CP called with value: %s\n", value);
 }
 
 void op_POP(const char *value) {
@@ -285,10 +459,6 @@ void op_RLC(const char *value) {
 
 void op_RRC(const char *value) {
     printf("op_RRC called with value: %s\n", value);
-}
-
-void op_DJNZ(const char *value) {
-    printf("op_DJNZ called with value: %s\n", value);
 }
 
 void op_JR(const char *value) {
@@ -372,32 +542,12 @@ void op_LD(const char *value1, const char *value2) {
     printf("op_LD called with value1: %s, value2: %s\n", value1, value2);
 }
 
-void op_ADD(const char *value1, const char *value2) {
-    printf("op_ADD called with value1: %s, value2: %s\n", value1, value2);
-}
-
-void op_ADC(const char *value1, const char *value2) {
-    printf("op_ADC called with value1: %s, value2: %s\n", value1, value2);
-}
-
 void op_JP(const char *value1, const char *value2) {
     printf("op_JP called with value1: %s, value2: %s\n", value1, value2);
 }
 
-void op_CALL(const char *value1, const char *value2) {
-    printf("op_CALL called with value1: %s, value2: %s\n", value1, value2);
-}
-
 void op_SBC(const char *value1, const char *value2) {
     printf("op_SBC called with value1: %s, value2: %s\n", value1, value2);
-}
-
-void op_EX(const char *value1, const char *value2) {
-    printf("op_EX called with value1: %s, value2: %s\n", value1, value2);
-}
-
-void op_BIT(const char *value1, const char *value2) {
-    printf("op_BIT called with value1: %s, value2: %s\n", value1, value2);
 }
 
 void op_RES(const char *value1, const char *value2) {
@@ -465,7 +615,7 @@ static void arithmetic_logical_byte(Z80_MNEMONIC op, const char *operand_2) {
     libspectrum_byte operand_2_value = 0;
 
     if (is_DDFD_op()) {
-        operand_2_value = get_byte_DDFD_value(operand_2);
+        operand_2_value = get_DDFD_byte_reg_value(operand_2);
     }
     else if (strlen(operand_2) == 1) {
         operand_2_value = get_byte_reg_value(operand_2);
@@ -983,7 +1133,7 @@ static bool is_DDFD_op(void) {
             current_op == CURRENT_OP_FD || current_op == CURRENT_OP_FDCB);
 }
 
-static libspectrum_byte get_byte_DDFD_value(const char *operand) {
+static libspectrum_byte get_DDFD_byte_reg_value(const char *operand) {
     libspectrum_byte value = 0;
 
     if (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) {
