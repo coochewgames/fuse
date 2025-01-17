@@ -5,31 +5,10 @@
 #include "logging.h"
 
 
-libspectrum_byte get_dd_offset_value(libspectrum_word register_value) {
-    libspectrum_byte offset = readbyte(PC);
+#define INDIRECT_WORD_OPERAND_LEN 4
 
-    perform_contend_read_no_mreq_iterations(PC, 5);
+// value = (libspectrum_byte)strtol(operand, NULL, 16); to be used for getting hex value
 
-    PC++;
-	MEMPTR_W = register_value + (libspectrum_signed_byte)offset;
-	return readbyte(MEMPTR_W);
-}
-
-/*
- *  This will retrieve the value of a byte operand;
- *  the operand can be a register or a literal hex value.
- */
-libspectrum_byte get_byte_value(char *operand) {
-    libspectrum_byte value = 0;
-
-    if (strlen(operand) == 1) {
-        value = get_byte_reg_value(operand[0]);
-    } else {
-        value = (libspectrum_byte)strtol(operand, NULL, 16);
-    }
-    
-    return value;
-}
 
 /*
  *  Use the macro for a byte register from the character name.
@@ -62,28 +41,20 @@ libspectrum_byte get_byte_reg_value(char reg) {
         case 'L':
             value = L;
             break;
+
+        //  The I and R registers are special case registers that are not part of the main register set.
+        case 'I':
+            value = I;
+            break;
+        case 'R':
+            value = (libspectrum_byte)R;  // Cast to ensure lower byte is used as this 8 bit register has been defined as a word
+            break;
         default:
             ERROR("Unexpected byte register found: %c", reg);
             break;
         }
 
     return value;
-}
-
-libspectrum_byte get_byte_ddfd_reg_value(char *reg) {
-    libspectrum_byte value = 0;
-
-    if (strcmp(reg, "IXL") == 0) {
-        value = IXL;
-    } else if (strcmp(reg, "IXH") == 0) {
-        value = IXH;
-    } else if (strcmp(reg, "IYL") == 0) {
-        value = IYL;
-    } else if (strcmp(reg, "IYH") == 0) {
-        value = IYH;
-    } else {
-        ERROR("Unexpected byte DDFD register found: %s", reg);
-    }
 }
 
 libspectrum_byte *get_byte_reg(char reg) {
@@ -113,6 +84,14 @@ libspectrum_byte *get_byte_reg(char reg) {
             break;
         case 'L':
             value = &L;
+            break;
+
+        //  The I and R registers are special case registers that are not part of the main register set.
+        case 'I':
+            value = &I;
+            break;
+        case 'R':
+            value = (libspectrum_byte *)&R;  // Cast to ensure lower byte is used as this 8 bit register has been defined as a word
             break;
         default:
             ERROR("Unexpected byte register found: %c", reg);
@@ -174,49 +153,17 @@ libspectrum_word *get_word_reg(const char *reg) {
 }
 
 /*
- *  Parase an address operand, which can be a double register, a literal address or an indirect address that may have an offset.
+ *  Return the word register from an indirect word operand.
  */
-ADDRESS_OPERAND parse_address_operand(const char *operand) {
-    ADDRESS_OPERAND result = { false, "", 0, 0 };
-    char *open_parenthesis = strchr(operand, '(');
-    char *close_parenthesis = strchr(operand, ')');
+char *get_indirect_word_reg(const char *operand) {
+    char *word_reg = NULL;
 
-    if (open_parenthesis && close_parenthesis && close_parenthesis > open_parenthesis) {
-        result.is_indirect = true;
-
-        // Extract the register and offset
-        char indirect_address[20];
-
-        strncpy(indirect_address, open_parenthesis + 1, (close_parenthesis - open_parenthesis - 1));
-        indirect_address[close_parenthesis - open_parenthesis - 1] = '\0';
-
-        if (strncmp(indirect_address, "0x", 2) == 0) {
-            result.address = (libspectrum_word)strtol(indirect_address, NULL, 16);
-        } else {
-            // Check if there is an offset
-            char *plus_sign = strchr(indirect_address, '+');
-
-            if (plus_sign) {
-                strncpy(result.reg, indirect_address, plus_sign - indirect_address);
-
-                result.reg[plus_sign - indirect_address] = '\0';
-                result.offset = atoi(plus_sign + 1);
-            } else {
-                strcpy(result.reg, indirect_address);
-            }
-        }
-    } else {
-        if (strncmp(operand, "0x", 2) == 0) {
-            result.address = (libspectrum_word)strtol(operand, NULL, 16);
-        } else if (strlen(operand) == 2) {
-            // No parentheses, just copy the double register name
-            strcpy(result.reg, operand);
-        } else {
-            ERROR("Unexpected address operand found: %s", operand);
-        }
+    if (strlen(operand) == INDIRECT_WORD_OPERAND_LEN &&
+        operand[0] == '(' && operand[INDIRECT_WORD_OPERAND_LEN - 1] == ')') {
+        word_reg = operand + 1;
     }
 
-    return result;
+    return word_reg;
 }
 
 /*

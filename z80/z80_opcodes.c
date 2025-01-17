@@ -17,6 +17,7 @@ static Z80_OP_SET_NAME z80_ops_sets_list[] = {
     { 0, NULL }
 };
 
+//  TODO: Sort into alphabeticl order and ensure all are present with the correct number of parameters
 static Z80_OP_FUNC_LOOKUP z80_op_func_lookup[] = {
     { NOP, OP_TYPE_NO_PARAMS, .func.no_params = op_NOP },
     { LD, OP_TYPE_TWO_PARAMS, .func.two_params = op_LD },
