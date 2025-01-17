@@ -5,14 +5,6 @@
 #include <libspectrum.h>
 
 
-typedef struct {
-    bool is_indirect;
-    char reg[3];                // To store register pair (e.g., "HL", "IX", "IY")
-    libspectrum_word address;   // To store a literal address value
-    int offset;                 // To store the offset value
-} ADDRESS_OPERAND;
-
-
 libspectrum_byte get_byte_reg_value(char reg);
 libspectrum_byte *get_byte_reg(char reg);
 libspectrum_word get_word_reg_value(const char *reg);
