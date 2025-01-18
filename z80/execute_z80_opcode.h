@@ -38,11 +38,13 @@ void op_LDIR(void);
 void op_NEG(void);
 void op_NOP(void);
 void op_OR(const char *operand_1, const char *operand_2);
+void op_OUT(const char *operand_1, const char *operand_2);
 void op_OTDR(void);
 void op_OTIR(void);
 void op_OUTD(void);
 void op_OUTI(void);
 void op_POP(const char *operand);
+void op_PUSH(const char *operand);
 void op_RES(const char *operand_1, const char *operand_2);
 void op_RET(const char *operand);
 void op_RETN(void);
@@ -57,27 +59,17 @@ void op_RRC(const char *operand);
 void op_RRCA(void);
 void op_RRD(void);
 void op_RST(const char *operand);
-
-
-
-
-// Function prototypes for opcodes with no parameters
+void op_SBC(const char *operand_1, const char *operand_2);
 void op_SCF(void);
-void op_SLTTRAP(void);
-
-// Function prototypes for opcodes with one parameter
-void op_SUB(const char *operand);
-void op_XOR(const char *operand);
-void op_PUSH(const char *operand);
+void op_SET(const char *operand_1, const char *operand_2);
 void op_SLA(const char *operand);
+void op_SLL(const char *operand);
 void op_SRA(const char *operand);
 void op_SRL(const char *operand);
-void op_SLL(const char *operand);
-void op_SHIFT(const char *operand);
+void op_SUB(const char *operand_1, const char *operand_2);
+void op_XOR(const char *operand_1, const char *operand_2);
 
-// Function prototypes for opcodes with two parameters
-void op_SBC(const char *operand_1, const char *operand_2);
-void op_SET(const char *operand_1, const char *operand_2);
-void op_OUT(const char *operand_1, const char *operand_2);
+void op_SLTTRAP(void);
+void op_SHIFT(const char *operand);
 
 #endif // EXECUTE_Z80_OPCODE_H

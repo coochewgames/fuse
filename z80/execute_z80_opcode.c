@@ -3,6 +3,7 @@
 
 #include <spectrum.h>  // Includes tstates and libspectrum.h
 #include <rzx.h>  // Required for LD instruction
+#include <slt.h> // Required for SLTTRAP instruction
 
 #include "z80.h"
 #include "z80_macros.h"
@@ -625,41 +626,47 @@ void op_RST(const char *operand) {
     _RST(hex_value);
 }
 
+void op_SBC(const char *operand_1, const char *operand_2) {
+    arithmetic_logical(SBC, operand_1, operand_2);
+}
 
-
-
-// Function implementations for opcodes with no parameters
 void op_SCF(void) {
-    printf("op_SCF called\n");
+    F = (F & ( FLAG_P | FLAG_Z | FLAG_S)) |
+        ((IS_CMOS ? A : ((last_Q ^ F) | A)) & (FLAG_3 | FLAG_5)) |
+        FLAG_C;
+    Q = F;
+}
+
+void op_SET(const char *operand_1, const char *operand_2) {
+    res_set(SET, operand_1, operand_2);
+}
+
+void op_SLA(const char *operand) {
+    rotate_shift(SLA, operand);
+}
+
+void op_SLL(const char *operand) {
+    rotate_shift(SLL, operand);
+}
+
+void op_SRA(const char *operand) {
+    rotate_shift(SRA, operand);
+}
+
+void op_SRL(const char *operand) {
+    rotate_shift(SRL, operand);
+}
+
+void op_SUB(const char *operand_1, const char *operand_2) {
+    arithmetic_logical(SUB, operand_1, operand_2);
+}
+
+void op_XOR(const char *operand_1, const char *operand_2) {
+    arithmetic_logical(XOR, operand_1, operand_2);
 }
 
 void op_SLTTRAP(void) {
-    printf("op_SLTTRAP called\n");
-}
-
-// Function implementations for opcodes with one parameter
-void op_SUB(const char *value) {
-    printf("op_SUB called with value: %s\n", value);
-}
-
-void op_XOR(const char *value) {
-    printf("op_XOR called with value: %s\n", value);
-}
-
-void op_SLA(const char *value) {
-    printf("op_SLA called with value: %s\n", value);
-}
-
-void op_SRA(const char *value) {
-    printf("op_SRA called with value: %s\n", value);
-}
-
-void op_SRL(const char *value) {
-    printf("op_SRL called with value: %s\n", value);
-}
-
-void op_SLL(const char *value) {
-    printf("op_SLL called with value: %s\n", value);
+    slt_trap(HL, A);
 }
 
 /*
@@ -724,15 +731,6 @@ void op_SHIFT(const char *value) {
         //  The shift is complete, so reset the current_op to the base set.
         current_op = CURRENT_OP_BASE;
     }
-}
-
-// Function implementations for opcodes with two parameters
-void op_SBC(const char *value1, const char *value2) {
-    printf("op_SBC called with value1: %s, value2: %s\n", value1, value2);
-}
-
-void op_SET(const char *value1, const char *value2) {
-    printf("op_SET called with value1: %s, value2: %s\n", value1, value2);
 }
 
 /*
