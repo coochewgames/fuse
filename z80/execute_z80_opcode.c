@@ -549,7 +549,7 @@ void op_RET(const char *operand) {
 
 void op_RETN(void) {
     IFF1=IFF2;
-    RET();
+    _RET();
 
     z80_retn();
 }

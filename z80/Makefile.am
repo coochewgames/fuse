@@ -32,26 +32,6 @@ BUILT_SOURCES += \
                  z80/z80_ddfdcb.c \
                  z80/z80_ed.c
 
-z80/opcodes_base.c: $(srcdir)/z80/z80.pl $(srcdir)/z80/opcodes_base.dat
-	@$(MKDIR_P) z80
-	$(AM_V_GEN)$(PERL) -I$(srcdir)/perl $(srcdir)/z80/z80.pl $(srcdir)/z80/opcodes_base.dat > $@.tmp && mv $@.tmp $@
-
-z80/z80_cb.c: $(srcdir)/z80/z80.pl $(srcdir)/z80/opcodes_cb.dat
-	@$(MKDIR_P) z80
-	$(AM_V_GEN)$(PERL) -I$(srcdir)/perl $(srcdir)/z80/z80.pl $(srcdir)/z80/opcodes_cb.dat > $@.tmp && mv $@.tmp $@
-
-z80/z80_ddfd.c: $(srcdir)/z80/z80.pl $(srcdir)/z80/opcodes_ddfd.dat
-	@$(MKDIR_P) z80
-	$(AM_V_GEN)$(PERL) -I$(srcdir)/perl $(srcdir)/z80/z80.pl $(srcdir)/z80/opcodes_ddfd.dat > $@.tmp && mv $@.tmp $@
-
-z80/z80_ddfdcb.c: $(srcdir)/z80/z80.pl $(srcdir)/z80/opcodes_ddfd.dat
-	@$(MKDIR_P) z80
-	$(AM_V_GEN)$(PERL) -I$(srcdir)/perl $(srcdir)/z80/z80.pl $(srcdir)/z80/opcodes_ddfdcb.dat > $@.tmp && mv $@.tmp $@
-
-z80/z80_ed.c: $(srcdir)/z80/z80.pl $(srcdir)/z80/opcodes_ed.dat
-	@$(MKDIR_P) z80
-	$(AM_V_GEN)$(PERL) -I$(srcdir)/perl $(srcdir)/z80/z80.pl $(srcdir)/z80/opcodes_ed.dat > $@.tmp && mv $@.tmp $@
-
 noinst_HEADERS += \
                   z80/z80.h \
                   z80/z80_checks.h \
@@ -67,12 +47,7 @@ EXTRA_DIST += \
               z80/opcodes_cb.dat \
               z80/opcodes_ddfd.dat \
               z80/opcodes_ddfdcb.dat \
-              z80/opcodes_ed.dat \
-              z80/z80.pl \
-              z80/z80_cb.c \
-              z80/z80_ddfd.c \
-              z80/z80_ddfdcb.c \
-              z80/z80_ed.c
+              z80/opcodes_ed.dat
 
 ## The core tester
 
@@ -93,10 +68,5 @@ test: z80/coretest
 	cmp z80/tests.actual $(srcdir)/z80/tests/tests.expected
 
 CLEANFILES += \
-              z80/opcodes_base.c \
               z80/tests.actual \
-              z80/z80_cb.c \
-              z80/z80_coretest.o \
-              z80/z80_ddfd.c \
-              z80/z80_ddfdcb.c \
-              z80/z80_ed.c
+              z80/z80_coretest.o

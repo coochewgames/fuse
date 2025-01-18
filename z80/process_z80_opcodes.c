@@ -155,7 +155,7 @@ void z80_do_opcodes(void) {
         }
 
         /* Opcode fetch and execute */
-        contend_read(PC, 4);
+        perform_contend_read(PC, 4);
 
         if (even_m1 && (tstates & 1)) {
             if (++tstates == event_next_event) {
