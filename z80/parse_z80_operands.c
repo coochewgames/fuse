@@ -7,8 +7,6 @@
 
 #define INDIRECT_WORD_OPERAND_LEN 4
 
-// value = (libspectrum_byte)strtol(operand, NULL, 16); to be used for getting hex value
-
 
 /*
  *  Use the macro for a byte register from the character name.

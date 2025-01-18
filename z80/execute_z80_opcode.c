@@ -403,6 +403,11 @@ void op_JR(const char *operand_1, const char *operand_2) {
     }
 }
 
+/*
+ *  The LD instruction is used to copy data from one location to another; it is the
+ *  most frequently used instruction in the Z80 instruction set and has the greatest
+ *  variance in operands to be catered for.
+ */
 void op_LD(const char *operand_1, const char *operand_2) {
     const char *dest = operand_1;
     const char *src = operand_2;
@@ -424,81 +429,208 @@ void op_LD(const char *operand_1, const char *operand_2) {
     }
 }
 
-// Function implementations for opcodes with no parameters
-void op_NOP(void) {
-    printf("op_NOP called\n");
-}
-
-void op_RLCA(void) {
-    printf("op_RLCA called\n");
-}
-
-void op_RRCA(void) {
-    printf("op_RRCA called\n");
-}
-
-void op_RLA(void) {
-    printf("op_RLA called\n");
-}
-
-void op_RRA(void) {
-    printf("op_RRA called\n");
-}
-
-void op_SCF(void) {
-    printf("op_SCF called\n");
-}
-
-void op_RET(void) {
-    printf("op_RET called\n");
-}
-
-void op_NEG(void) {
-    printf("op_NEG called\n");
-}
-
-void op_RETN(void) {
-    printf("op_RETN called\n");
-}
-
-void op_RRD(void) {
-    printf("op_RRD called\n");
-}
-
-void op_RLD(void) {
-    printf("op_RLD called\n");
-}
-
-void op_LDI(void) {
-    printf("op_LDI called\n");
-}
-
-void op_OUTI(void) {
-    printf("op_OUTI called\n");
-}
-
 void op_LDD(void) {
-    printf("op_LDD called\n");
-}
-
-void op_OUTD(void) {
-    printf("op_OUTD called\n");
-}
-
-void op_LDIR(void) {
-    printf("op_LDIR called\n");
-}
-
-void op_OTIR(void) {
-    printf("op_OTIR called\n");
+    ldi_ldd(LDD);
 }
 
 void op_LDDR(void) {
-    printf("op_LDDR called\n");
+    ldir_lddr(LDDR);
+}
+
+void op_LDI(void) {
+    ldi_ldd(LDI);
+}
+
+void op_LDIR(void) {
+    ldir_lddr(LDIR);
+}
+
+void op_NEG(void) {
+    libspectrum_byte bytetemp = A;
+
+	A = 0;
+	_SUB(bytetemp);
+}
+
+void op_NOP(void) {
+    //  No operation
+}
+
+void op_OR(const char *operand_1, const char *operand_2) {
+    arithmetic_logical(OR, operand_1, operand_2);
 }
 
 void op_OTDR(void) {
-    printf("op_OTDR called\n");
+    otir_otdr(OTDR);
+}
+
+void op_OTIR(void) {
+    otir_otdr(OTIR);
+}
+
+void op_OUT(const char *operand_1, const char *operand_2) {
+    const char *port = operand_1;
+    const char *reg = operand_2;
+
+    if (strcmp(port, "(nn)") == 0 && strcmp(reg, "A") == 0) {
+        libspectrum_byte nn = readbyte(PC++);
+        libspectrum_word outtemp = nn | (A << 8);
+
+        MEMPTR_H = A;
+        MEMPTR_L = (nn + 1);
+
+        writeport(outtemp, A);
+    }
+    else if (strcmp(port, "(C)") == 0 && strlen(reg) == 1) {
+        if (reg[0] == '0' ) {
+            writeport(BC, IS_CMOS ? 0xff : 0 );
+        } else {
+            writeport(BC, get_byte_reg_value(reg[0]));
+        }
+
+        MEMPTR_W = BC + 1;
+    }
+    else {
+        ERROR("Unexpected operands for OUT: %s, %s", port, reg);
+    }
+}
+
+void op_OUTD(void) {
+    outi_outd(OUTD);
+}
+
+void op_OUTI(void) {
+    outi_outd(OUTI);
+}
+
+void op_POP(const char *operand) {
+    push_pop(POP, operand);
+}
+
+void op_PUSH(const char *operand) {
+    perform_contend_read_no_mreq(IR, 1);
+    push_pop(PUSH, operand);
+}
+
+void op_RES(const char *operand_1, const char *operand_2) {
+    res_set(RES, operand_1, operand_2);
+}
+
+void op_RET(const char *operand) {
+    if (operand == NULL || strlen(operand) == 0) {
+        _RET();
+    } else {
+        perform_contend_read_no_mreq(IR, 1);
+
+        if (strcmp(operand, "NZ") == 0) {
+            if (PC == 0x056c || PC == 0x0112) {  // There is no indication of what these addresses represent
+                if (tape_load_trap() == 0) {
+                    return;
+                }
+            }
+        }
+
+        if (is_flag_true(operand)) {
+            _RET();
+        }
+    }
+}
+
+void op_RETN(void) {
+    IFF1=IFF2;
+    RET();
+
+    z80_retn();
+}
+
+void op_RL(const char *operand) {
+    rotate_shift(RL, operand);
+}
+
+void op_RLA(void) {
+	libspectrum_byte bytetemp = A;
+
+	A = (A << 1) | (F & FLAG_C);
+	F = (F & (FLAG_P | FLAG_Z | FLAG_S)) |
+	    (A & (FLAG_3 | FLAG_5)) | (bytetemp >> 7);
+	Q = F;
+}
+
+void op_RLC(const char *operand) {
+    rotate_shift(RLC, operand);
+}
+
+void op_RLCA(void) {
+    A = (A << 1) | (A >> 7);
+    F = (F & (FLAG_P | FLAG_Z | FLAG_S)) |
+        (A & (FLAG_C | FLAG_3 | FLAG_5));
+    Q = F;
+}
+
+void op_RLD(void) {
+	libspectrum_byte bytetemp = readbyte(HL);
+
+    perform_contend_read_no_mreq_iterations(HL, 4);
+	writebyte(HL, (bytetemp << 4) | (A & 0x0f));
+
+	A = (A & 0xf0) | (bytetemp >> 4);
+	F = (F & FLAG_C) | sz53p_table[A];
+	Q = F;
+
+	MEMPTR_W = HL + 1;
+}
+
+void op_RR(const char *operand) {
+    rotate_shift(RR, operand);
+}
+
+void op_RRA(void) {
+	libspectrum_byte bytetemp = A;
+
+	A = (A >> 1) | (F << 7);
+	F = (F & (FLAG_P | FLAG_Z | FLAG_S)) |
+	    (A & (FLAG_3 | FLAG_5)) | (bytetemp & FLAG_C);
+	Q = F;
+}
+
+void op_RRC(const char *operand) {
+    rotate_shift(RRC, operand);
+}
+
+void op_RRCA(void) {
+    F = (F & (FLAG_P | FLAG_Z | FLAG_S)) |
+        (A & FLAG_C);
+    A = (A >> 1) | (A << 7);
+    F |= (A & (FLAG_3 | FLAG_5));
+    Q = F;
+}
+
+void op_RRD(void) {
+	libspectrum_byte bytetemp = readbyte(HL);
+
+    perform_contend_read_no_mreq_iterations(HL, 4);
+	writebyte(HL, (A << 4) | (bytetemp >> 4));
+
+	A = (A & 0xf0) | (bytetemp & 0x0f);
+	F = (F & FLAG_C) | sz53p_table[A];
+	Q = F;
+
+	MEMPTR_W = HL + 1;
+}
+
+void op_RST(const char *operand) {
+    libspectrum_byte hex_value = (libspectrum_byte)strtol(operand, NULL, 16);
+
+    perform_contend_read_no_mreq(IR, 1);
+    _RST(hex_value);
+}
+
+
+
+
+// Function implementations for opcodes with no parameters
+void op_SCF(void) {
+    printf("op_SCF called\n");
 }
 
 void op_SLTTRAP(void) {
@@ -514,30 +646,6 @@ void op_XOR(const char *value) {
     printf("op_XOR called with value: %s\n", value);
 }
 
-void op_OR(const char *value) {
-    printf("op_OR called with value: %s\n", value);
-}
-
-void op_POP(const char *value) {
-    printf("op_POP called with value: %s\n", value);
-}
-
-void op_PUSH(const char *value) {
-    printf("op_PUSH called with value: %s\n", value);
-}
-
-void op_RST(const char *value) {
-    printf("op_RST called with value: %s\n", value);
-}
-
-void op_RL(const char *value) {
-    printf("op_RL called with value: %s\n", value);
-}
-
-void op_RR(const char *value) {
-    printf("op_RR called with value: %s\n", value);
-}
-
 void op_SLA(const char *value) {
     printf("op_SLA called with value: %s\n", value);
 }
@@ -548,14 +656,6 @@ void op_SRA(const char *value) {
 
 void op_SRL(const char *value) {
     printf("op_SRL called with value: %s\n", value);
-}
-
-void op_RLC(const char *value) {
-    printf("op_RLC called with value: %s\n", value);
-}
-
-void op_RRC(const char *value) {
-    printf("op_RRC called with value: %s\n", value);
 }
 
 void op_SLL(const char *value) {
@@ -631,16 +731,8 @@ void op_SBC(const char *value1, const char *value2) {
     printf("op_SBC called with value1: %s, value2: %s\n", value1, value2);
 }
 
-void op_RES(const char *value1, const char *value2) {
-    printf("op_RES called with value1: %s, value2: %s\n", value1, value2);
-}
-
 void op_SET(const char *value1, const char *value2) {
     printf("op_SET called with value1: %s, value2: %s\n", value1, value2);
-}
-
-void op_OUT(const char *value1, const char *value2) {
-    printf("op_OUT called with value1: %s, value2: %s\n", value1, value2);
 }
 
 /*

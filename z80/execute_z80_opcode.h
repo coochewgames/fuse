@@ -31,52 +31,52 @@ void op_INIR(void);
 void op_JP(const char *operand_1, const char *operand_2);
 void op_JR(const char *operand_1, const char *operand_2);
 void op_LD(const char *operand_1, const char *operand_2);
+void op_LDD(void);
+void op_LDDR(void);
+void op_LDI(void);
+void op_LDIR(void);
+void op_NEG(void);
+void op_NOP(void);
+void op_OR(const char *operand_1, const char *operand_2);
+void op_OTDR(void);
+void op_OTIR(void);
+void op_OUTD(void);
+void op_OUTI(void);
+void op_POP(const char *operand);
+void op_RES(const char *operand_1, const char *operand_2);
+void op_RET(const char *operand);
+void op_RETN(void);
+void op_RL(const char *operand);
+void op_RLA(void);
+void op_RLC(const char *operand);
+void op_RLCA(void);
+void op_RLD(void);
+void op_RR(const char *operand);
+void op_RRA(void);
+void op_RRC(const char *operand);
+void op_RRCA(void);
+void op_RRD(void);
+void op_RST(const char *operand);
 
 
 
 
 // Function prototypes for opcodes with no parameters
-void op_NOP(void);
-void op_RLCA(void);
-void op_RRCA(void);
-void op_RLA(void);
-void op_RRA(void);
 void op_SCF(void);
-void op_RET(void);
-void op_NEG(void);
-void op_RETN(void);
-void op_RRD(void);
-void op_RLD(void);
-void op_LDI(void);
-void op_OUTI(void);
-void op_LDD(void);
-void op_OUTD(void);
-void op_LDIR(void);
-void op_OTIR(void);
-void op_LDDR(void);
-void op_OTDR(void);
 void op_SLTTRAP(void);
 
 // Function prototypes for opcodes with one parameter
 void op_SUB(const char *operand);
 void op_XOR(const char *operand);
-void op_OR(const char *operand);
-void op_POP(const char *operand);
 void op_PUSH(const char *operand);
-void op_RST(const char *operand);
-void op_RL(const char *operand);
-void op_RR(const char *operand);
 void op_SLA(const char *operand);
 void op_SRA(const char *operand);
 void op_SRL(const char *operand);
-void op_RLC(const char *operand);
-void op_RRC(const char *operand);
 void op_SLL(const char *operand);
 void op_SHIFT(const char *operand);
 
 // Function prototypes for opcodes with two parameters
 void op_SBC(const char *operand_1, const char *operand_2);
-void op_RES(const char *operand_1, const char *operand_2);
 void op_SET(const char *operand_1, const char *operand_2);
 void op_OUT(const char *operand_1, const char *operand_2);
 
