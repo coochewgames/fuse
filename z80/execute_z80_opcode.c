@@ -4,6 +4,7 @@
 #include <spectrum.h>  // Includes tstates and libspectrum.h
 #include <rzx.h>  // Required for LD instruction
 #include <slt.h> // Required for SLTTRAP instruction
+#include <settings.h> // Required for CMOS setting
 
 #include "z80.h"
 #include "z80_macros.h"
@@ -94,6 +95,15 @@ static libspectrum_word get_DDFD_word_reg_value(void);
 static bool is_flag_true(const char *condition);
 static FLAG_MAPPING get_flag_mapping(const char *condition);
 
+static libspectrum_byte last_Q;
+
+
+/*
+ *  Allow the last_Q to be localised for the opcode execution.
+ */
+void op_set_last_Q(libspectrum_byte q_value) {
+    last_Q = q_value;
+}
 
 /*
  *  The following functions execute the Z80 instructions and their associated operands from the dat files,
@@ -151,7 +161,7 @@ void op_CALL(const char *operand_1, const char *operand_2) {
 void op_CCF(void) {
     F = ( F & (FLAG_P | FLAG_Z | FLAG_S) ) |
         ( (F & FLAG_C) ? FLAG_H : FLAG_C ) |
-        ( (IS_CMOS ? A : ((last_Q ^ F) | A)) & (FLAG_3 | FLAG_5) );
+        ( (settings_current.z80_is_cmos ? A : ((last_Q ^ F) | A)) & (FLAG_3 | FLAG_5) );
     Q = F;
 }
 
@@ -484,7 +494,7 @@ void op_OUT(const char *operand_1, const char *operand_2) {
     }
     else if (strcmp(port, "(C)") == 0 && strlen(reg) == 1) {
         if (reg[0] == '0' ) {
-            writeport(BC, IS_CMOS ? 0xff : 0 );
+            writeport(BC, settings_current.z80_is_cmos ? 0xff : 0 );
         } else {
             writeport(BC, get_byte_reg_value(reg[0]));
         }
@@ -632,7 +642,7 @@ void op_SBC(const char *operand_1, const char *operand_2) {
 
 void op_SCF(void) {
     F = (F & ( FLAG_P | FLAG_Z | FLAG_S)) |
-        ((IS_CMOS ? A : ((last_Q ^ F) | A)) & (FLAG_3 | FLAG_5)) |
+        ((settings_current.z80_is_cmos ? A : ((last_Q ^ F) | A)) & (FLAG_3 | FLAG_5)) |
         FLAG_C;
     Q = F;
 }

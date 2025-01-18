@@ -184,7 +184,7 @@ z80_interrupt( void )
       tstates < machine_current->timings.interrupt_length &&
       !scld_last_dec.name.intdisable ) {
 
-    if ( z80.iff2_read && !IS_CMOS ) {
+    if ( z80.iff2_read && !settings_current.z80_is_cmos ) {
       /* We just executed LD A,I or LD A,R, causing IFF2 to be copied to the
 	 parity flag.  This occured whilst accepting an interrupt.  For NMOS
 	 Z80s only, clear the parity flag to reflect the fact that IFF2 would

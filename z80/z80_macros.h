@@ -111,8 +111,6 @@
 // Combined Interrupt and Refresh register
 #define IR ( ( z80.i ) << 8 | ( z80.r7 & 0x80 ) | ( z80.r & 0x7f ) )
 
-#define IS_CMOS settings_current.z80_is_cmos  // CMOS flag
-
 #define Q z80.q  // Q register, used to store the state of flags affected by the last executed instruction
 
 // The flags

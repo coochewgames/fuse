@@ -1,6 +1,8 @@
 #ifndef EXECUTE_Z80_OPCODE_H
 #define EXECUTE_Z80_OPCODE_H
 
+void op_set_last_Q(libspectrum_byte q_value);
+
 void op_ADD(const char *operand_1, const char *operand_2);
 void op_ADC(const char *operand_1, const char *operand_2);
 void op_AND(const char *operand_1, const char *operand_2);

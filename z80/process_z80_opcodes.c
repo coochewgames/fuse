@@ -58,14 +58,14 @@
   PC = Program Counter
   R = Refresh register
   Q = Q register
-      In the context of the Z80 emulation, Q is typically used to store the state of the flags that are affected by the last executed instruction. This helps in managing the flag's state across multiple instructions and ensuring that the correct flag values are used when needed.
+      In the context of the Z80 emulation, Q is typically used to store the state of the flags that are affected by the last executed instruction.
+      This helps in managing the flag's state across multiple instructions and ensuring that the correct flag values are used when needed.
       The Q register is reset to 0 after each instruction to prepare for the next instruction's flag updates.
 */
 
 /* Execute Z80 opcodes until the next event */
 void z80_do_opcodes(void) {
     libspectrum_byte opcode = 0x00;
-    libspectrum_byte last_Q;
     int even_m1 = machine_current->capabilities & LIBSPECTRUM_MACHINE_CAPABILITY_EVEN_M1;
 
     while (tstates < event_next_event) {
@@ -189,7 +189,8 @@ void z80_do_opcodes(void) {
 
         PC++;
         R++;
-        last_Q = Q;
+
+        op_set_last_Q(Q);
         Q = 0;
 
         switch (opcode) {
