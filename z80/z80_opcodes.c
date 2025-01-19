@@ -14,10 +14,9 @@ static Z80_OP_SET_NAME z80_ops_sets_list[] = {
     { OP_SET_DDFD, "opcodes_ddfd.dat" },
     { OP_SET_DDFDCB, "opcodes_ddfdcb.dat" },
     { OP_SET_ED, "opcodes_ed.dat" },
-    { 0, NULL }
+    { OP_SET_NUM, NULL }
 };
 
-//  TODO: Sort into alphabeticl order and ensure all are present with the correct number of parameters
 static Z80_OP_FUNC_LOOKUP z80_op_func_lookup[] = {
     { ADD, OP_TYPE_TWO_PARAMS, .func.two_params = op_ADD },
     { ADC, OP_TYPE_TWO_PARAMS, .func.two_params = op_ADC },
@@ -123,6 +122,7 @@ Z80_OP_FUNC_LOOKUP get_z80_op_func(Z80_MNEMONIC op) {
     for (int i = 0; z80_op_func_lookup[i].op != 0; i++) {
         if (z80_op_func_lookup[i].op == op) {
             z80_op_func = z80_op_func_lookup[i];
+            break;
         }
     }
     

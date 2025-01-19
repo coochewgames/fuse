@@ -2,6 +2,7 @@
 
 ## Objective
 To output memory data to a local port, allowing ML to poll memory values in learning to play a game.
+Read in the dat files with the Z80 instruction sets at the initialisation of the executable, as opposed to being used to create the source code.
 
 ## Project Goals
  - Remove (Perl) build script code generation and replace with C
@@ -29,6 +30,9 @@ Main development platform is the command line on an M-processor using OS X.  The
  - `./configure`
  - `make`
  - `./fuse`
+
+## Notes
+With the refactoring, this version will require the dat files with the Z80 instruction sets to be available with the executable.  This will entail that they can be updated directly without the need to rebuild, which aligns with the ability to experiment with the different aspects of the emulator.
 
 The Free Unix Spectrum Emulator (Fuse) 1.6.0
 ============================================

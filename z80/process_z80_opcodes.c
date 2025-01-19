@@ -52,6 +52,8 @@
 #include "z80_macros.h"
 
 #include "process_z80_opcodes.h"
+#include "z80_opcodes.h"
+#include "execute_z80_opcode.h"
 
 
 /*
@@ -65,16 +67,19 @@
 
 /* Execute Z80 opcodes until the next event */
 void z80_do_opcodes(void) {
-    libspectrum_byte opcode = 0x00;
     int even_m1 = machine_current->capabilities & LIBSPECTRUM_MACHINE_CAPABILITY_EVEN_M1;
 
+    libspectrum_byte opcode_id = 0x00;
+    Z80_OP op;
+
+    /*
+     *  Execute Z80 opcodes until the next event.
+     */
     while (tstates < event_next_event) {
-        /* Profiler */
         if (profile_active) {
             profile_map(PC);
         }
 
-        /* RZX Playback End-of-Frame */
         if (rzx_playback) {
             if (R + rzx_instructions_offset >= rzx_instruction_count) {
                 event_add(tstates, spectrum_frame_event);
@@ -82,14 +87,13 @@ void z80_do_opcodes(void) {
             }
         }
 
-        /* Debugger */
         if (debugger_mode != DEBUGGER_MODE_INACTIVE) {
             if (debugger_check(DEBUGGER_BREAKPOINT_TYPE_EXECUTE, PC)) {
                 debugger_trap();
             }
         }
 
-        /* Beta Disk */
+        // Beta Disk Interface
         if (beta_available) {
             if (beta_active) {
                 if ((!(machine_current->capabilities & LIBSPECTRUM_MACHINE_CAPABILITY_128_MEMORY) ||
@@ -104,7 +108,7 @@ void z80_do_opcodes(void) {
             }
         }
 
-        /* Other checks (e.g., plusd, disciple, etc.) */
+        //  Other checks (e.g., plusd, disciple, etc.)
         if (plusd_available && (PC == 0x0008 || PC == 0x003a || PC == 0x0066 || PC == 0x028e)) {
             plusd_page();
         }
@@ -154,7 +158,7 @@ void z80_do_opcodes(void) {
             }
         }
 
-        /* Opcode fetch and execute */
+        //  Perform a memory contention read of the Program Counter
         perform_contend_read(PC, 4);
 
         if (even_m1 && (tstates & 1)) {
@@ -163,7 +167,8 @@ void z80_do_opcodes(void) {
             }
         }
 
-        opcode = readbyte_internal(PC);
+        //  Get the operation from the PC memory address; this is always a BASE operation
+        opcode_id = readbyte_internal(PC);
 
         if (if1_available && PC == IF1_UNPAGE_ADDR) {
             if1_unpage();
@@ -173,7 +178,7 @@ void z80_do_opcodes(void) {
             if ((PC & DIVIDE_UNPAGE_ADDR_MASK) == DIVIDE_UNPAGE_ADDR) {
                 divide_set_automap(0);
             } else if (PC == DIVIDE_PAGE_ADDR1 || PC == DIVIDE_PAGE_ADDR2 || PC == DIVIDE_PAGE_ADDR3 || 
-                      PC == DIVIDE_PAGE_ADDR4 || PC == DIVIDE_PAGE_ADDR5 || PC == DIVIDE_PAGE_ADDR6) {
+                       PC == DIVIDE_PAGE_ADDR4 || PC == DIVIDE_PAGE_ADDR5 || PC == DIVIDE_PAGE_ADDR6) {
                 divide_set_automap(1);
             }
         }
@@ -182,7 +187,7 @@ void z80_do_opcodes(void) {
             if ((PC & DIVIDE_UNPAGE_ADDR_MASK) == DIVIDE_UNPAGE_ADDR) {
                 divmmc_set_automap(0);
             } else if (PC == DIVIDE_PAGE_ADDR1 || PC == DIVIDE_PAGE_ADDR2 || PC == DIVIDE_PAGE_ADDR3 || 
-                      PC == DIVIDE_PAGE_ADDR4 || PC == DIVIDE_PAGE_ADDR5 || PC == DIVIDE_PAGE_ADDR6) {
+                       PC == DIVIDE_PAGE_ADDR4 || PC == DIVIDE_PAGE_ADDR5 || PC == DIVIDE_PAGE_ADDR6) {
                 divmmc_set_automap(1);
             }
         }
@@ -193,8 +198,8 @@ void z80_do_opcodes(void) {
         op_set_last_Q(Q);
         Q = 0;
 
-        switch (opcode) {
-#include "z80/opcodes_base.c"
-        }
+        //  Retrieve the operation from the Z80 operation set given the id retrieved above then call the associated function
+        op = z80_ops_set[OP_SET_BASE].op_codes[opcode_id];
+        call_z80_op_func(op);
     }
 }
