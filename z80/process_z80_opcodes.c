@@ -198,7 +198,7 @@ void z80_do_opcodes(void) {
         op_set_last_Q(Q);
         Q = 0;
 
-        //  Retrieve the operation from the Z80 operation set given the id retrieved above then call the associated function
+        //  Retrieve the operation from the Z80 operation set given the opcode id retrieved above then call the associated function
         op = z80_ops_set[OP_SET_BASE].op_codes[opcode_id];
         call_z80_op_func(op);
     }
