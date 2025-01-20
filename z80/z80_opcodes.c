@@ -9,11 +9,11 @@
 
 
 static Z80_OP_SET_NAME z80_ops_sets_list[] = {
-    { OP_SET_BASE, "opcodes_base.dat" },
-    { OP_SET_CB, "opcodes_cb.dat" },
-    { OP_SET_DDFD, "opcodes_ddfd.dat" },
-    { OP_SET_DDFDCB, "opcodes_ddfdcb.dat" },
-    { OP_SET_ED, "opcodes_ed.dat" },
+    { OP_SET_BASE, "./z80/opcodes_base.dat" },
+    { OP_SET_CB, "./z80/opcodes_cb.dat" },
+    { OP_SET_DDFD, "./z80/opcodes_ddfd.dat" },
+    { OP_SET_DDFDCB, "./z80/opcodes_ddfdcb.dat" },
+    { OP_SET_ED, "./z80/opcodes_ed.dat" },
     { OP_SET_NUM, NULL }
 };
 

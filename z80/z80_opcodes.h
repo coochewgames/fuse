@@ -61,7 +61,7 @@ typedef enum {
 
 typedef struct {
     Z80_OP_SET_TYPE set_type;
-    char *name;
+    const char *name;
 } Z80_OP_SET_NAME;
 
 extern Z80_OPS z80_ops_set[];
