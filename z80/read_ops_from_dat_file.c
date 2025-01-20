@@ -7,8 +7,9 @@
 #include "read_ops_from_dat_file.h"
 #include "../logging.h"
 
-static const int MAX_LINE_LENGTH = 50;
-static const int MAX_MNEMONIC_LENGTH = 10;
+#define MAX_LINE_LENGTH 50
+#define MAX_MNEMONIC_LENGTH 10
+
 static const int INITIAL_CAPACITY = 10;
 
 
