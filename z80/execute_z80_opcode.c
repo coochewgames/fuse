@@ -963,11 +963,11 @@ static void arithmetic_logical_byte(Z80_MNEMONIC op, const char *operand_2) {
     }
 
     switch(op) {
-        case ADD:
-            _ADD(operand_2_value);
-            break;
         case ADC:
             _ADC(operand_2_value);
+            break;
+        case ADD:
+            _ADD(operand_2_value);
             break;
         case AND:
             _AND(operand_2_value);
@@ -975,14 +975,17 @@ static void arithmetic_logical_byte(Z80_MNEMONIC op, const char *operand_2) {
         case CP:
             _CP(operand_2_value);
             break;
+        case OR:
+            _OR(operand_2_value);
+            break;
         case SBC:
             _SBC(operand_2_value);
             break;
         case SUB:
             _SUB(operand_2_value);
             break;
-        case OR:
-            _OR(operand_2_value);
+        case XOR:
+            _XOR(operand_2_value);
             break;
         default:
             ERROR("Unexpected operation found with register operand for %s: %s", get_mnemonic_name(op), operand_2_value);

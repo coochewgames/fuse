@@ -87,7 +87,7 @@ static Z80_OP_FUNC_LOOKUP z80_op_func_lookup[] = {
     { XOR, OP_TYPE_TWO_PARAMS, .func.two_params = op_XOR },
     { SLTTRAP, OP_TYPE_NO_PARAMS, .func.no_params = op_SLTTRAP },
     { SHIFT, OP_TYPE_ONE_PARAM, .func.one_param = op_SHIFT },
-    { 0, 0, {NULL} } // Sentinel value to mark the end of the array
+    { Z80_MNEMONIC_COUNT, 0, {NULL} } // Sentinel value to mark the end of the array
 };
 
 Z80_OPS z80_ops_set[OP_SET_NUM];
@@ -119,7 +119,7 @@ bool init_op_sets(void) {
 Z80_OP_FUNC_LOOKUP get_z80_op_func(Z80_MNEMONIC op) {
     Z80_OP_FUNC_LOOKUP z80_op_func = { 0 };
 
-    for (int i = 0; z80_op_func_lookup[i].op != 0; i++) {
+    for (int i = 0; z80_op_func_lookup[i].op < Z80_MNEMONIC_COUNT; i++) {
         if (z80_op_func_lookup[i].op == op) {
             z80_op_func = z80_op_func_lookup[i];
             break;
