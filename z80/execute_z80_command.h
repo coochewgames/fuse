@@ -1,7 +1,7 @@
 #ifndef EXECUTE_Z80_COMMAND_H
 #define EXECUTE_Z80_COMMAND_H
 
-#include <libspectrum.h>
+#include "libspectrum.h"
 
 
 void _AND(libspectrum_byte value);

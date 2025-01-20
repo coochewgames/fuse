@@ -1,8 +1,12 @@
-#include "parse_z80_operands.h"
+#include <string.h>
 
 #include "z80.h"
 #include "z80_macros.h"
 #include "logging.h"
+
+#include "../memory_pages.h"
+
+#include "parse_z80_operands.h"
 
 
 #define INDIRECT_WORD_OPERAND_LEN 4
@@ -153,8 +157,8 @@ libspectrum_word *get_word_reg(const char *reg) {
 /*
  *  Return the word register from an indirect word operand.
  */
-char *get_indirect_word_reg(const char *operand) {
-    char *word_reg = NULL;
+const char *get_indirect_word_reg_name(const char *operand) {
+    const char *word_reg = NULL;
 
     if (strlen(operand) == INDIRECT_WORD_OPERAND_LEN &&
         operand[0] == '(' && operand[INDIRECT_WORD_OPERAND_LEN - 1] == ')') {

@@ -1,20 +1,24 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include <spectrum.h>  // Includes tstates and libspectrum.h
-#include <rzx.h>  // Required for LD instruction
-#include <slt.h> // Required for SLTTRAP instruction
-#include <settings.h> // Required for CMOS setting
+#include "../spectrum.h"  // Includes tstates
+#include "../rzx.h"  // Required for LD instruction
+#include "../slt.h" // Required for SLTTRAP instruction
+#include "../settings.h" // Required for CMOS setting
+#include "../event.h" // Required for event_add
+#include "../tape.h" // Required for tape_save_trap
+#include "../periph.h"  // Rerquired for readport
+
+#include "../memory_pages.h"
+#include "../logging.h"
 
 #include "z80.h"
 #include "z80_macros.h"
-#include "../memory_pages.h"
-
 #include "z80_opcodes.h"
+
 #include "parse_z80_operands.h"
 #include "execute_z80_opcode.h"
 #include "execute_z80_command.h"
-#include "logging.h"
 
 
 #define LOWER_THREE_BITS_MASK 0x07
@@ -275,11 +279,11 @@ void op_EX(const char *operand_1, const char *operand_2) {
         libspectrum_byte *reg_l;
 
         if (strcmp(operand_2, "HL") == 0) {
-            reg_h = H;
-            reg_l = L;
+            reg_h = &H;
+            reg_l = &L;
         } else if (is_DDFD_op() && strcmp(operand_2, "REGISTER") == 0) {
-            reg_h = (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) ? IXH  : IYH;
-            reg_l = (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) ? IXL : IYL;
+            reg_h = (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) ? &IXH  : &IYH;
+            reg_l = (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) ? &IXL : &IYL;
         }
         else {
             ERROR("Unexpected operand 2 for EX with SP as operand 1: %s", operand_2);
@@ -347,16 +351,14 @@ void op_IN(const char *operand_1, const char *operand_2) {
         libspectrum_word intemp = readbyte(PC++) + (A << 8);
 
         A = readport(intemp);
-        MEMPTR_W = intemp + 1;  // TODO: is this correct if (nn) was 0xff?
+        MEMPTR_W = intemp + 1;  // Is this correct if (nn) was 0xff?
     }
     else if (strcmp(operand_1, "F") == 0 && strcmp(operand_2, "(C)") == 0) {
         libspectrum_byte bytetemp;
 
-        _Z80_IN(bytetemp, BC);
+        _Z80_IN(&bytetemp, BC);  // Value is not used but address is for temporary storage
     }
     else if (strlen(operand_1) == 1 && strcmp(operand_2, "(C)") == 0) {
-        libspectrum_byte bytetemp;
-
         _Z80_IN(get_byte_reg(operand_1[0]), BC);
     }
     else {
@@ -422,7 +424,7 @@ void op_JR(const char *operand_1, const char *operand_2) {
 void op_LD(const char *operand_1, const char *operand_2) {
     const char *dest = operand_1;
     const char *src = operand_2;
-    const char *indirect_dest_address_reg = get_indirect_word_reg(dest);
+    const char *indirect_dest_address_reg = get_indirect_word_reg_name(dest);
 
     if (is_byte_reg_from_operand(dest)) {
         //  This call encompasses DD and FD instructions
@@ -720,11 +722,9 @@ void op_SHIFT(const char *value) {
         if (strcmp(value, "DD") == 0) {
             current_op = CURRENT_OP_DD;
             op = z80_ops_set[OP_SET_DDFD].op_codes[opcode_id];
-            set_dd_operands(op);
         } else if (strcmp(value, "FD") == 0) {
             current_op = CURRENT_OP_FD;
             op = z80_ops_set[OP_SET_DDFD].op_codes[opcode_id];
-            set_dd_operands(op);
         } else if (strcmp(value, "CB") == 0) {
             current_op = CURRENT_OP_CB;
             op = z80_ops_set[OP_SET_CB].op_codes[opcode_id];
@@ -750,7 +750,7 @@ void op_SHIFT(const char *value) {
 
 static void ld_dest_byte(const char *operand_1, const char *operand_2) {
     char dest = operand_1[0];
-    char *dest_reg = get_byte_reg_from_operand(operand_1);
+    libspectrum_byte *dest_reg = get_byte_reg_from_operand(operand_1);
     const char *word_reg;
 
     if (is_byte_reg_from_operand(operand_2)) {
@@ -787,7 +787,7 @@ static void ld_dest_byte(const char *operand_1, const char *operand_2) {
         }
     } else if (strcmp(operand_2, "nn") == 0) {
         *dest_reg = readbyte(PC++);
-    } else if ((word_reg = get_indirect_word_reg(operand_2)) != NULL) {
+    } else if ((word_reg = get_indirect_word_reg_name(operand_2)) != NULL) {
         if (strcmp(word_reg, "BC") == 0 || strcmp(word_reg, "DE") == 0) {
             MEMPTR_W = get_word_reg_value(word_reg) + 1;
         } else {
@@ -799,7 +799,7 @@ static void ld_dest_byte(const char *operand_1, const char *operand_2) {
         A = readbyte(MEMPTR_W++);
     } else if (is_DDFD_op()) {
         if (strcmp(operand_2, "(REGISTER+dd)") == 0) {
-            *get_DDFD_byte_reg_from_operand(dest) = get_DDFD_byte_reg_value_from_operand(operand_2);
+            *get_DDFD_byte_reg_from_operand(operand_1) = get_DDFD_byte_reg_value_from_operand(operand_2);
         } else {
             ERROR("Unexpected DDFD operand 2 source word register found for LD: %s", operand_2);
         }
@@ -810,15 +810,15 @@ static void ld_dest_byte(const char *operand_1, const char *operand_2) {
 
 static void ld_dest_word(const char *operand_1, const char *operand_2) {
     const char *src = operand_2;
-    regpair *dest;
+    regpair_by_addr dest;
 
-    dest->w = get_word_reg_from_operand(operand_1);
+    dest.w = get_word_reg_from_operand(operand_1);
 
     if (strcmp(src, "nnnn") == 0) {
-        dest->b.l = readbyte(PC++);
-        dest->b.h = readbyte(PC++);
+        *dest.b.l = readbyte(PC++);
+        *dest.b.h = readbyte(PC++);
     } else if (strcmp(src, "(nnnn)") == 0) {
-        _LD16_RRNN(&dest->b.l, &dest->b.h);
+        _LD16_RRNN(dest.b.l, dest.b.h);
     } else if (strcmp(src, "HL") == 0) {
         perform_contend_read_no_mreq(IR, 1);
         perform_contend_read_no_mreq(IR, 1);
@@ -869,10 +869,10 @@ static void ld_dest_indirect_from_PC(const char *operand) {
         writebyte(wordtemp, A);
     }
     else if (is_word_reg_from_operand(src)) {
-        regpair *src_reg;
+        regpair_by_addr src_reg;
 
-        src_reg->w = get_word_reg_from_operand(src);
-        _LD16_NNRR(src_reg->b.l, src_reg->b.h);
+        src_reg.w = get_word_reg_from_operand(src);
+        _LD16_NNRR(src_reg.b.l, src_reg.b.h);
     }
 }
 
@@ -947,7 +947,7 @@ static void arithmetic_logical_byte(Z80_MNEMONIC op, const char *operand_2) {
         operand_2_value = get_DDFD_byte_reg_value_from_operand(operand_2);
     }
     else if (strlen(operand_2) == 1) {
-        operand_2_value = get_byte_reg_value(operand_2);
+        operand_2_value = get_byte_reg_value(operand_2[0]);
     }
     else {
         if (strcmp(operand_2, "(HL)") == 0) {
@@ -990,8 +990,6 @@ static void arithmetic_logical_byte(Z80_MNEMONIC op, const char *operand_2) {
 }
 
 static void arithmetic_logical_word(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
-    libspectrum_byte operand_2_value = 0;
-
     if (strcmp(operand_2, "HL") != 0) {
         WARNING("Expected operand 2 to be HL for %s: Found %s", get_mnemonic_name(op), operand_2);
     }
@@ -1029,7 +1027,7 @@ static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_
     MEMPTR_L= readbyte(PC++);
     MEMPTR_H = readbyte(PC);
 
-    if (offset == NULL || strlen(offset) == 0 || is_flag_true(operand_1)) {
+    if (offset == NULL || strlen(offset) == 0 || is_flag_true(condition)) {
         switch(op) {
             case CALL:
                 _CALL();
@@ -1129,16 +1127,16 @@ static void inc_dec(Z80_MNEMONIC op, const char *operand) {
 
             (*reg) += modifier;
         } else if (strcmp(operand, "(REGISTER+dd)") == 0) {
-            libspectrum_byte value = get_DDFD_byte_value(operand);
+            libspectrum_byte value = get_DDFD_offset_value();
 
             perform_contend_read_no_mreq(MEMPTR_W, 1);
-            (op == INC) ? _INC(value) : _DEC(value);
+            (op == INC) ? _INC(&value) : _DEC(&value);
 
         	writebyte(MEMPTR_W, value);
         } else {
-            libspectrum_byte value = get_DDFD_byte_value(operand);
+            libspectrum_byte value = get_DDFD_offset_value();
 
-            (op == INC) ? _INC(value) : _DEC(value);
+            (op == INC) ? _INC(&value) : _DEC(&value);
         }
     } else {
         ERROR("Unexpected operand found for %s: %s", get_mnemonic_name(op), operand);
@@ -1504,7 +1502,7 @@ static bool is_word_reg_from_operand(const char *operand) {
  *  This will also the value for an indirect word registers.
  */
 static libspectrum_word *get_word_reg_from_operand(const char *operand) {
-    libspectrum_byte *word_reg = NULL;
+    libspectrum_word *word_reg = NULL;
 
     if (strlen(operand) == 2) {
         word_reg = get_word_reg(operand);
@@ -1527,7 +1525,7 @@ static libspectrum_byte *get_DDFD_byte_reg_from_operand(const char *operand) {
         if (strcmp(operand, "REGISTERL") == 0) {
             reg = &IXL;
         } else if (strcmp(operand, "REGISTERH") == 0) {
-            reg = IXH;
+            reg = &IXH;
         } else {
             ERROR("Unexpected DD byte register operand found: %s", operand);
         }
@@ -1587,7 +1585,7 @@ static libspectrum_byte get_DDFD_offset_value(void) {
 }
 
 static libspectrum_word *get_DDFD_word_reg(void) {
-    libspectrum_word value = NULL;
+    libspectrum_word *value = NULL;
 
     if (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) {
         value = &IX;

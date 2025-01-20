@@ -24,6 +24,8 @@
 #ifndef FUSE_EVENT_H
 #define FUSE_EVENT_H
 
+#include "config.h"
+
 #ifdef HAVE_LIB_GLIB
 #include <glib.h>
 #endif				/* #ifdef HAVE_LIB_GLIB */

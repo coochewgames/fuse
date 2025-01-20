@@ -51,6 +51,7 @@
 #include "utils.h"
 #include "z80/z80.h"
 #include "z80/z80_macros.h"
+#include "z80/execute_z80_command.h"
 
 /* The current tape */
 static libspectrum_tape *tape;
@@ -505,7 +506,7 @@ trap_load_block( libspectrum_tape_block *block )
     i = 0; /* one byte was read, but it is not treated as data byte */
     B = 0xB0; /* B is set to 0xB0 at the end of LD-8-BITS/0x05CA loop */
     A = parity; /* rom 0x05DF */
-    CP( 1 ); /* parity check is successful if A==0 */
+    _CP( 1 ); /* parity check is successful if A==0 */
     goto common_ret;
   }
 
@@ -541,13 +542,13 @@ trap_load_block( libspectrum_tape_block *block )
   if( DE == i && read + 1 < length ) {
     parity ^= data[read];
     A = parity;
-    CP( 1 ); /* parity check is successful if A==0 */
+    _CP( 1 ); /* parity check is successful if A==0 */
     B = 0xB0;
   } else {
     /* Failure to read first bit of the next byte (ref. 48K ROM, 0x5EC) */
     B = 255;
     L = 1;
-    INC( B );
+    _INC( &B );
 error_ret:
     F &= ~FLAG_C;
   }

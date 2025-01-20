@@ -19,30 +19,36 @@
 ## Author contact information:
 ##
 ## E-mail: philip-fuse@shadowmagic.org.uk
+## Refactoring: rd.mcn@ccgapps.net.au
 
 fuse_SOURCES += \
-                z80/z80.c \
+                z80/execute_z80_command.c \
+                z80/execute_z80_opcode.c \
+                z80/mnemonics.c \
+                z80/parse_z80_operands.c \
+                z80/process_z80_opcodes.c \
+                z80/read_ops_from_dat_file.c \
                 z80/z80_debugger_variables.c \
-                z80/process_z80_opcodes.c
-
-BUILT_SOURCES += \
-                 z80/opcodes_base.c \
-                 z80/z80_cb.c \
-                 z80/z80_ddfd.c \
-                 z80/z80_ddfdcb.c \
-                 z80/z80_ed.c
+                z80/z80_opcodes.c \
+                z80/z80.c
 
 noinst_HEADERS += \
-                  z80/z80.h \
-                  z80/z80_checks.h \
-                  z80/z80_internals.h \
-                  z80/z80_macros.h
+                z80/execute_z80_command.h \
+                z80/execute_z80_opcode.h \
+                z80/mnemonics.h \
+                z80/parse_z80_operands.h \
+                z80/process_z80_opcodes.h \
+                z80/read_ops_from_dat_file.h \
+                z80/z80_checks.h \
+                z80/z80_internals.h \
+                z80/z80_macros.h \
+                z80_opcodes.h \
+                z80/z80.h
 
 EXTRA_DIST += \
               z80/tests/README \
               z80/tests/tests.expected \
               z80/tests/tests.in \
-              z80/opcodes_base.c \
               z80/opcodes_base.dat \
               z80/opcodes_cb.dat \
               z80/opcodes_ddfd.dat \
@@ -69,4 +75,4 @@ test: z80/coretest
 
 CLEANFILES += \
               z80/tests.actual \
-              z80/z80_coretest.o
+              z80/*.o

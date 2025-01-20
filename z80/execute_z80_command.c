@@ -1,10 +1,14 @@
 #include <string.h>
-#include <libspectrum.h>
+
+#include "libspectrum.h"
 
 #include "z80.h"
 #include "z80_macros.h"
-
 #include "parse_z80_operands.h"
+#include "execute_z80_command.h"
+
+#include "../periph.h"  // Rerquired for readport
+#include "../memory_pages.h"
 #include "../logging.h"
 
 #define FLAG_C_MASK 0x100
@@ -78,13 +82,13 @@ void _ADD(libspectrum_byte value) {
  *  This function is used to add two 16-bit values together; the 16 bit register values
  *  are always represented by two 8-bit registers concatenated together.
  */
-void _ADD16(libspectrum_dword value1, libspectrum_dword value2) {
+void _ADD16(libspectrum_word value1, libspectrum_word value2) {
     libspectrum_dword add16temp = value1 + value2;
     libspectrum_byte lookup = ( (value1 & FLAG_11) >> 11 ) |
         ( (value2 & FLAG_11 ) >> 10 ) |
         ( (add16temp & FLAG_11) >>  9 );
 
-    z80.memptr.w = value1 + 1;
+    MEMPTR_W = value1 + 1;
     value1 = add16temp;
 
     F = ( F & (FLAG_V | FLAG_Z | FLAG_S) ) |
