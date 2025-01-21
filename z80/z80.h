@@ -36,21 +36,6 @@ typedef union {
   libspectrum_word w;
 } regpair;
 
-typedef union {
-#ifdef WORDS_BIGENDIAN
-  struct {
-    libspectrum_byte *h;
-    libspectrum_byte *l;
-  } b;
-#else
-  struct {
-    libspectrum_byte *l;
-    libspectrum_byte *h;
-  } b;
-#endif
-  libspectrum_word *w;
-} regpair_by_addr;
-
 /* What's stored in the main processor */
 typedef struct {
   regpair af,bc,de,hl;

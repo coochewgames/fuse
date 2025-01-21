@@ -424,15 +424,14 @@ void op_JR(const char *operand_1, const char *operand_2) {
 void op_LD(const char *operand_1, const char *operand_2) {
     const char *dest = operand_1;
     const char *src = operand_2;
-    const char *indirect_dest_address_reg = get_indirect_word_reg_name(dest);
 
     if (is_byte_reg_from_operand(dest)) {
         //  This call encompasses DD and FD instructions
         ld_dest_byte(dest, src);
     } else if (is_word_reg_from_operand(dest)) {
         ld_dest_word(dest, src);
-    } else if (indirect_dest_address_reg != NULL) {
-        ld_dest_indirect(indirect_dest_address_reg, src);
+    } else if (is_indirect_word_reg(dest)) {
+        ld_dest_indirect(dest, src);
     } else if (strcmp(dest, "(nnnn)") == 0) {
         ld_dest_indirect_from_PC(src);
     } else if (is_DDFD_op() && strcmp(dest, "(REGISTER+dd)") == 0) {
@@ -809,16 +808,23 @@ static void ld_dest_byte(const char *operand_1, const char *operand_2) {
 }
 
 static void ld_dest_word(const char *operand_1, const char *operand_2) {
+    const char *dest = operand_1;
     const char *src = operand_2;
-    regpair_by_addr dest;
+    regpair dest_word_union;
 
-    dest.w = get_word_reg_from_operand(operand_1);
+    dest_word_union.w = *get_word_reg_from_operand(dest);
 
     if (strcmp(src, "nnnn") == 0) {
-        *dest.b.l = readbyte(PC++);
-        *dest.b.h = readbyte(PC++);
+        dest_word_union.b.l = readbyte(PC++);
+        dest_word_union.b.h = readbyte(PC++);
+
+        //  Write the updated word to the destination register
+        *get_word_reg_from_operand(dest) = dest_word_union.w;
     } else if (strcmp(src, "(nnnn)") == 0) {
-        _LD16_RRNN(dest.b.l, dest.b.h);
+        _LD16_RRNN(&dest_word_union.b.l, &dest_word_union.b.h);
+
+        //  Write the updated word to the destination register
+        *get_word_reg_from_operand(dest) = dest_word_union.w;
     } else if (strcmp(src, "HL") == 0) {
         perform_contend_read_no_mreq(IR, 1);
         perform_contend_read_no_mreq(IR, 1);
@@ -838,9 +844,19 @@ static void ld_dest_word(const char *operand_1, const char *operand_2) {
     }
 }
 
+/*
+ *  The indirect dest is always a word register.
+ */
 static void ld_dest_indirect(const char *operand_1, const char *operand_2) {
-    const char *dest = operand_1;
+    const char *dest;
     const char *src = operand_2;
+
+    dest = get_indirect_word_reg_name(operand_1);
+
+    if (strlen(dest) != 2) {
+        ERROR("Unexpected dest for indirect LD: %s", dest);
+        return;
+    }
 
     if (strlen(src) == 1) {
         if (strcmp(dest, "BC") == 0 || strcmp(dest, "DE") == 0) {
@@ -869,10 +885,10 @@ static void ld_dest_indirect_from_PC(const char *operand) {
         writebyte(wordtemp, A);
     }
     else if (is_word_reg_from_operand(src)) {
-        regpair_by_addr src_reg;
+        regpair src_word_union;
 
-        src_reg.w = get_word_reg_from_operand(src);
-        _LD16_NNRR(src_reg.b.l, src_reg.b.h);
+        src_word_union.w = *get_word_reg_from_operand(src);
+        _LD16_NNRR(src_word_union.b.l, src_word_union.b.h);
     }
 }
 
@@ -905,14 +921,15 @@ static void ld_dest_DDFD_offset(const char *operand) {
  */
 static void arithmetic_logical(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
     char *op_1 = strdup(operand_1);
-    char *op_2 = strdup(operand_2);
+    char *op_2 = (operand_2 == NULL) ? NULL : strdup(operand_2);
 
     /*
      *  In Z80 assembly, if only operand_1 is provided then the code assumes that the
      *  operation uses the accumulator register A.
      */
-    if (op_2 == NULL || strlen(op_2) == 0) {
-        strcpy(op_2, op_1);
+    if (operand_2 == NULL || strlen(operand_2) == 0) {
+        op_2 = strdup(op_1);
+
         strcpy(op_1, "A");
     }
 

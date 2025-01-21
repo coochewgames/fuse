@@ -182,16 +182,16 @@ void _INC(libspectrum_byte *value) {
     Q = F;
 }
 
-void _LD16_NNRR(libspectrum_byte *regl, libspectrum_byte *regh) {
+void _LD16_NNRR(libspectrum_byte regl, libspectrum_byte regh) {
     libspectrum_word ldtemp;
 
     ldtemp = readbyte(PC++);
     ldtemp |= readbyte(PC++) << 8;
 
-    writebyte(ldtemp++, *regl);
+    writebyte(ldtemp++, regl);
 
     MEMPTR_W = ldtemp;
-    writebyte(ldtemp, *regh);
+    writebyte(ldtemp, regh);
 }
 
 void _LD16_RRNN(libspectrum_byte *regl, libspectrum_byte *regh) {

@@ -10,6 +10,7 @@ libspectrum_byte *get_byte_reg(char reg);
 libspectrum_word get_word_reg_value(const char *reg);
 libspectrum_word *get_word_reg(const char *reg);
 
+bool is_indirect_word_reg(const char *operand);
 const char *get_indirect_word_reg_name(const char *operand);
 
 void perform_contend_read_no_mreq_iterations(libspectrum_word address, int iterations);

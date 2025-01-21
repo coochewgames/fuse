@@ -17,7 +17,7 @@ void _DDFDCB_ROTATESHIFT(int time, libspectrum_byte *target, void (*instruction)
 void _DEC(libspectrum_byte *value);
 void _Z80_IN(libspectrum_byte *reg, libspectrum_word port);
 void _INC(libspectrum_byte *value);
-void _LD16_NNRR(libspectrum_byte *regl, libspectrum_byte *regh);
+void _LD16_NNRR(libspectrum_byte regl, libspectrum_byte regh);
 void _LD16_RRNN(libspectrum_byte *regl, libspectrum_byte *regh);
 void _JP(void);
 void _JR(void);

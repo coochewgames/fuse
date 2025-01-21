@@ -10,7 +10,7 @@
 
 
 #define INDIRECT_WORD_OPERAND_LEN 4
-
+#define WORD_OPERAND_LEN 2
 
 /*
  *  Use the macro for a byte register from the character name.
@@ -154,18 +154,30 @@ libspectrum_word *get_word_reg(const char *reg) {
     return value;
 }
 
+bool is_indirect_word_reg(const char *operand) {
+    bool is_indirect_word = false;
+
+    if (strlen(operand) == INDIRECT_WORD_OPERAND_LEN &&
+        operand[0] == '(' && operand[INDIRECT_WORD_OPERAND_LEN - 1] == ')') {
+        is_indirect_word = true;
+    }
+
+    return is_indirect_word;
+}
+
 /*
  *  Return the word register from an indirect word operand.
  */
 const char *get_indirect_word_reg_name(const char *operand) {
-    const char *word_reg = NULL;
+    static char indirect_word_reg[INDIRECT_WORD_OPERAND_LEN] = "";
 
     if (strlen(operand) == INDIRECT_WORD_OPERAND_LEN &&
         operand[0] == '(' && operand[INDIRECT_WORD_OPERAND_LEN - 1] == ')') {
-        word_reg = operand + 1;
+        strncpy(indirect_word_reg, operand + 1, WORD_OPERAND_LEN);
+        indirect_word_reg[WORD_OPERAND_LEN] = '\0';
     }
 
-    return word_reg;
+    return indirect_word_reg;
 }
 
 /*
