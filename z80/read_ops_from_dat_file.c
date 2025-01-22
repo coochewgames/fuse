@@ -38,6 +38,16 @@ Z80_OPS read_op_codes(const char *filename) {
     }
 
     while (fgets(line, sizeof(line), file)) {
+        Z80_MNEMONIC op = UNKNOWN_MNEMONIC;
+        Z80_OP op_code = {0};
+
+        unsigned int id;
+        char mnemonic[MAX_MNEMONIC_LENGTH];
+        char operands[MAX_LINE_LENGTH] = "";
+        char operand1[MAX_OPERAND_LENGTH] = "";
+        char operand2[MAX_OPERAND_LENGTH] = "";
+        char extras[MAX_OPERAND_LENGTH] = "";
+
         line_count++;
 
         if (strlen(line) == 0 || line[0] == '#'|| line[0] == '\n') {
@@ -48,50 +58,46 @@ Z80_OPS read_op_codes(const char *filename) {
             line[strlen(line) - 1] = '\0';
         }
 
-        unsigned int id;
-        char mnemonic[MAX_MNEMONIC_LENGTH];
-        char operands[MAX_LINE_LENGTH] = "";
-        char operand1[MAX_OPERAND_LENGTH] = "";
-        char operand2[MAX_OPERAND_LENGTH] = "";
-        char extras[MAX_OPERAND_LENGTH] = "";
-
         int numFields = sscanf(line, "%x %s %s %s", &id, mnemonic, operands, extras);
 
+        if (numFields == 0 || numFields == EOF) {
+            ERROR("Skipping line with invalid format at line %d: %s", line_count, line);
+            continue;
+        }
+
         if (numFields == 1) {
-            INFO("Skipping line with empty identifier %d: %s", line_count, line);
-        } else if (numFields < 2) {
-            ERROR("Invalid line format at line %d: %s", line_count, line);
-            continue;
-        }
+            //  id has been retrieved but with no command, so add a NOP command.
+            op_code.id = (unsigned char)id;
+            op_code.op = NOP;
+            op_code.op_func_lookup = get_z80_op_func(NOP);
+        } else {
+            op = get_mnemonic_enum(mnemonic);
 
-        Z80_MNEMONIC op = get_mnemonic_enum(mnemonic);
+            if (op == UNKNOWN_MNEMONIC) {
+                ERROR("Unknown mnemonic found at line %d: %s", line_count, mnemonic);
+                continue;
+            }
 
-        if (op == UNKNOWN_MNEMONIC) {
-            ERROR("Unknown mnemonic found at line %d: %s", line_count, mnemonic);
-            continue;
-        }
-
-        // Split operands by comma if present
-        char *token = strtok(operands, ",");
-
-        if (token) {
-            strncpy(operand1, token, MAX_OPERAND_LENGTH);
-            token = strtok(NULL, ",");
+            // Split operands by comma if present
+            char *token = strtok(operands, ",");
 
             if (token) {
-                strncpy(operand2, token, MAX_OPERAND_LENGTH);
+                strncpy(operand1, token, MAX_OPERAND_LENGTH);
+                token = strtok(NULL, ",");
+
+                if (token) {
+                    strncpy(operand2, token, MAX_OPERAND_LENGTH);
+                }
             }
+
+            op_code.id = (unsigned char)id;
+            op_code.op = op;
+            op_code.op_func_lookup = get_z80_op_func(op);
+
+            strncpy(op_code.operand_1, operand1, MAX_OPERAND_LENGTH);
+            strncpy(op_code.operand_2, operand2, MAX_OPERAND_LENGTH);
+            strncpy(op_code.extras, extras, MAX_OPERAND_LENGTH);
         }
-
-        Z80_OP op_code = {0};
-
-        op_code.id = (unsigned char)id;
-        op_code.op = op;
-        op_code.op_func_lookup = get_z80_op_func(op);
-
-        strncpy(op_code.operand_1, operand1, MAX_OPERAND_LENGTH);
-        strncpy(op_code.operand_2, operand2, MAX_OPERAND_LENGTH);
-        strncpy(op_code.extras, extras, MAX_OPERAND_LENGTH);
 
         if (add_op_code(&capacity, op_code, &ops) == false) {
             fclose(file);
