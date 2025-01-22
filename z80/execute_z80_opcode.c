@@ -257,7 +257,7 @@ void op_EI(void) {
 }
 
 void op_EX(const char *operand_1, const char *operand_2) {
-    if (strcmp(operand_1, "AF") == 0 && strcmp(operand_1, "AF'")) {
+    if (strcmp(operand_1, "AF") == 0 && strcmp(operand_2, "AF'") == 0) {
         /*
          *  Tape saving trap: note this traps the EX AF,AF' at #04d0, not #04d1 as the PC has already been incremented.
          *  0x0076 is the Timex 2068 save routine in EXROM.
@@ -272,7 +272,7 @@ void op_EX(const char *operand_1, const char *operand_2) {
 
         AF = AF_;
         AF_ = wordtemp;
-    } else if (strcmp(operand_1, "SP") == 0) {
+    } else if (strcmp(operand_1, "(SP)") == 0) {
         libspectrum_byte bytetempl = readbyte(SP);
         libspectrum_byte bytetemph = readbyte(SP + 1);
         libspectrum_byte *reg_h;
