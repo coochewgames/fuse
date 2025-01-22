@@ -1010,30 +1010,32 @@ static void arithmetic_logical_byte(Z80_MNEMONIC op, const char *operand_2) {
 }
 
 static void arithmetic_logical_word(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
-    if (strcmp(operand_2, "HL") != 0) {
-        WARNING("Expected operand 2 to be HL for %s: Found %s", get_mnemonic_name(op), operand_2);
+    if (strlen(operand_2) != 2) {
+        WARNING("Unexpected register in operand 2 found for %s: %s", get_mnemonic_name(op), operand_2);
+        return;
     }
-
-    libspectrum_word operand_1_value = get_word_reg_value(operand_1);
 
     perform_contend_read_no_mreq_iterations(IR, 7);
 
-    switch(op) {
-        case ADD:
-            if (strlen(operand_2) != 2) {
-                WARNING("Unexpected register in operand 2 found for ADD16: %s", operand_2);
-            } else {
-                _ADD16(operand_1_value, get_word_reg_value(operand_2));
+    if (op == ADD) {
+        _ADD16(get_word_reg_value(operand_1), get_word_reg_value(operand_2));
+    } else {
+        if (strcmp(operand_1, "HL") == 0) {
+            libspectrum_word operand_2_value = get_word_reg_value(operand_2);
+
+            switch(op) {
+                case ADC:
+                    _ADC16(operand_2_value);
+                    break;
+                case SBC:
+                    _SBC16(operand_2_value);
+                    break;
+                default:
+                    ERROR("Unexpected operation found with 16-bit register operand for %s: %s", get_mnemonic_name(op), operand_2);
             }
-            break;
-        case ADC:
-            _ADC16(operand_1_value);
-            break;
-        case SBC:
-            _SBC16(operand_1_value);
-            break;
-        default:
-            ERROR("Unexpected operation found with 16-bit register operand for %s: %s", get_mnemonic_name(op), operand_1);
+        } else {
+            WARNING("Expected operand 1 to be HL for %s: Found %s", get_mnemonic_name(op), operand_1);
+        }
     }
 }
 

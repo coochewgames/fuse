@@ -11,7 +11,7 @@ void log_message(const char *filename, unsigned int line, const char *function, 
     if (strcmp(level, "DEBUG") == 0) {
         fprintf(stdout, "[%s] %s:%d:%s - ", level, filename, line, function);
     } else {
-        fprintf(stderr, "[%s] %s - ", level, function);
+        fprintf(stderr, "[%s] %s:%d - ", level, filename, line);
     }
 
     vfprintf(stderr, message, args);
