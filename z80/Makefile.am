@@ -22,57 +22,66 @@
 ## Refactoring: rd.mcn@ccgapps.net.au
 
 fuse_SOURCES += \
-                z80/execute_z80_command.c \
-                z80/execute_z80_opcode.c \
-                z80/mnemonics.c \
-                z80/parse_z80_operands.c \
-                z80/process_z80_opcodes.c \
-                z80/read_ops_from_dat_file.c \
-                z80/z80_debugger_variables.c \
-                z80/z80_opcodes.c \
-                z80/z80.c
+				z80/execute_z80_command.c \
+				z80/execute_z80_opcode.c \
+				z80/mnemonics.c \
+				z80/parse_z80_operands.c \
+				z80/process_z80_opcodes.c \
+				z80/read_ops_from_dat_file.c \
+				z80/z80_debugger_variables.c \
+				z80/z80_opcodes.c \
+				z80/z80.c
 
 noinst_HEADERS += \
-                z80/execute_z80_command.h \
-                z80/execute_z80_opcode.h \
-                z80/mnemonics.h \
-                z80/parse_z80_operands.h \
-                z80/process_z80_opcodes.h \
-                z80/read_ops_from_dat_file.h \
-                z80/z80_checks.h \
-                z80/z80_internals.h \
-                z80/z80_macros.h \
-                z80_opcodes.h \
-                z80/z80.h
+				z80/execute_z80_command.h \
+				z80/execute_z80_opcode.h \
+				z80/mnemonics.h \
+				z80/parse_z80_operands.h \
+				z80/process_z80_opcodes.h \
+				z80/read_ops_from_dat_file.h \
+				z80/z80_checks.h \
+				z80/z80_internals.h \
+				z80/z80_macros.h \
+				z80/z80_opcodes.h \
+				z80/z80.h
 
 EXTRA_DIST += \
-              z80/tests/README \
-              z80/tests/tests.expected \
-              z80/tests/tests.in \
-              z80/opcodes_base.dat \
-              z80/opcodes_cb.dat \
-              z80/opcodes_ddfd.dat \
-              z80/opcodes_ddfdcb.dat \
-              z80/opcodes_ed.dat
+			  z80/tests/README \
+			  z80/tests/tests.expected \
+			  z80/tests/tests.in \
+			  z80/opcodes_base.dat \
+			  z80/opcodes_cb.dat \
+			  z80/opcodes_ddfd.dat \
+			  z80/opcodes_ddfdcb.dat \
+			  z80/opcodes_ed.dat
 
 ## The core tester
 
 noinst_PROGRAMS += z80/coretest
 
-z80_coretest_SOURCES = z80/coretest.c z80/z80.c
-z80_coretest_LDADD = z80/z80_coretest.o $(GLIB_LIBS) $(LIBSPECTRUM_LIBS)
+## Coretest needs to have a special version of perform_contend_read* to avoid mass dependencies
+z80_coretest_SOURCES = \
+					z80/coretest.c \
+					z80/process_z80_opcodes.c \
+					z80/execute_z80_command.c \
+					z80/execute_z80_opcode.c \
+					z80/mnemonics.c \
+					z80/parse_z80_operands.c \
+					z80/read_ops_from_dat_file.c \
+					z80/z80_opcodes.c \
+					z80/z80.c
+
+z80_coretest_LDADD = \
+					logging.o \
+					$(GLIB_LIBS) \
+					$(LIBSPECTRUM_LIBS)
+
 z80_coretest_CPPFLAGS = $(GLIB_CFLAGS) $(LIBSPECTRUM_CFLAGS) -DCORETEST
-
-z80/coretest.o: $(srcdir)/z80/coretest.c
-	$(AM_V_CC)$(COMPILE) -DCORETEST -c $(srcdir)/z80/coretest.c -o $@
-
-z80/z80_coretest.o: z80/process_z80_opcodes.c
-	$(AM_V_CC)$(COMPILE) -DCORETEST -c $(srcdir)/z80/process_z80_opcodes.c -o $@
 
 test: z80/coretest
 	z80/coretest $(srcdir)/z80/tests/tests.in > z80/tests.actual
 	cmp z80/tests.actual $(srcdir)/z80/tests/tests.expected
 
 CLEANFILES += \
-              z80/tests.actual \
-              z80/*.o
+			  z80/tests.actual \
+			  z80/*.o

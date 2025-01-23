@@ -153,7 +153,8 @@ EXTRA_DIST = AUTHORS \
 
 CLEANFILES = options.h \
 	     settings.c \
-	     settings.h
+	     settings.h \
+		 *~
 
 DISTCLEANFILES =
 

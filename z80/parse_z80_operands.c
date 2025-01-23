@@ -1,5 +1,9 @@
 #include <string.h>
 
+#ifdef CORETEST
+#include "coretest.h"
+#endif
+
 #include "z80.h"
 #include "z80_macros.h"
 #include "logging.h"

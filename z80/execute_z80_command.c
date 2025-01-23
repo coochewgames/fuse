@@ -1,5 +1,9 @@
 #include <string.h>
 
+#ifdef CORETEST
+#include "coretest.h"
+#endif
+
 #include "libspectrum.h"
 
 #include "z80.h"

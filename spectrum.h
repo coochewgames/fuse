@@ -27,7 +27,6 @@
 #include <stdlib.h>
 
 #include "libspectrum.h"
-
 #include "memory_pages.h"
 
 /* How many tstates have elapsed since the last interrupt? (or more

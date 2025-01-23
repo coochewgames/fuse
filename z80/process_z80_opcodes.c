@@ -25,11 +25,17 @@
 */
 #include <config.h>
 #include <stdio.h>
+
+#ifdef CORETEST
+#include "coretest.h"
+#endif
+
 #include "debugger/debugger.h"
 #include "event.h"
 #include "machine.h"
 #include "memory_pages.h"
 #include "periph.h"
+
 #include "peripherals/disk/beta.h"
 #include "peripherals/disk/didaktik.h"
 #include "peripherals/disk/disciple.h"
@@ -42,6 +48,7 @@
 #include "peripherals/spectranet.h"
 #include "peripherals/ula.h"
 #include "peripherals/usource.h"
+
 #include "profile.h"
 #include "rzx.h"
 #include "settings.h"

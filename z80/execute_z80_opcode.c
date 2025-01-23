@@ -1,6 +1,10 @@
 #include <string.h>
 #include <stdbool.h>
 
+#ifdef CORETEST
+#include "coretest.h"
+#endif
+
 #include "../spectrum.h"  // Includes tstates
 #include "../rzx.h"  // Required for LD instruction
 #include "../slt.h" // Required for SLTTRAP instruction

@@ -21,14 +21,14 @@
 
 */
 
-#include "config.h"
-
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "config.h"
 #include "fuse.h"
+
 #include "peripherals/disk/beta.h"
 #include "peripherals/disk/didaktik.h"
 #include "peripherals/disk/disciple.h"
@@ -40,16 +40,19 @@
 #include "peripherals/spectranet.h"
 #include "peripherals/ula.h"
 #include "peripherals/usource.h"
+
+#include "infrastructure/startup_manager.h"
+
 #include "profile.h"
 #include "rzx.h"
 #include "slt.h"
 #include "tape.h"
-
 #include "event.h"
-#include "infrastructure/startup_manager.h"
+
 #include "module.h"
 #include "spectrum.h"
 #include "ui/ui.h"
+
 #include "z80.h"
 #include "z80_macros.h"
 
@@ -149,20 +152,20 @@ writebyte_internal( libspectrum_word address, libspectrum_byte b )
 }
 
 void
-contend_read( libspectrum_word address, libspectrum_dword time )
+perform_contend_read( libspectrum_word address, libspectrum_dword time )
 {
   printf( "%5d MC %04x\n", tstates, address );
   tstates += time;
 }
 
 void
-contend_read_no_mreq( libspectrum_word address, libspectrum_dword time )
+perform_contend_read_no_mreq( libspectrum_word address, libspectrum_dword time )
 {
-  contend_read( address, time );
+  perform_contend_read( address, time );
 }
 
 void
-contend_write_no_mreq( libspectrum_word address, libspectrum_dword time )
+perform_contend_write_no_mreq( libspectrum_word address, libspectrum_dword time )
 {
   printf( "%5d MC %04x\n", tstates, address );
   tstates += time;

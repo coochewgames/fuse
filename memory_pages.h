@@ -180,21 +180,21 @@ libspectrum_byte readbyte( libspectrum_word address );
    flexibility in the core tester */
 
 #ifndef CORETEST
-
 #define readbyte_internal( address ) \
   memory_map_read[ (libspectrum_word)(address) >> MEMORY_PAGE_SIZE_LOGARITHM ].page[ (address) & MEMORY_PAGE_SIZE_MASK ]
-
-#else				/* #ifndef CORETEST */
-
+#else
 libspectrum_byte readbyte_internal( libspectrum_word address );
-
-#endif				/* #ifndef CORETEST */
+#endif
 
 void writebyte( libspectrum_word address, libspectrum_byte b );
 void writebyte_internal( libspectrum_word address, libspectrum_byte b );
+
+#ifndef CORETEST
+//  These have been redefined in the coretest.c file to avoid mass dependencies
 void perform_contend_read(libspectrum_word address, time_t time);
 void perform_contend_read_no_mreq(libspectrum_word address, time_t time);
 void perform_contend_write_no_mreq(libspectrum_word address, time_t time);
+#endif
 
 typedef void (*memory_display_dirty_fn)( libspectrum_word address,
                                          libspectrum_byte b );
