@@ -392,7 +392,7 @@ void op_INIR(void) {
 
 void op_JP(const char *operand_1, const char *operand_2) {
     if (strcmp(operand_1, "HL") == 0) {
-        PC = HL;
+        PC = HL;  // Not indirect
     } else if (is_DDFD_op()) {
         PC = (current_op == CURRENT_OP_DD || current_op == CURRENT_OP_DDCB) ? IX : IY;
     } else {
@@ -1050,7 +1050,7 @@ static void call_jp(Z80_MNEMONIC op, const char *operand_1, const char *operand_
     const char *condition = operand_1;
     const char *offset = operand_2;
 
-    MEMPTR_L= readbyte(PC++);
+    MEMPTR_L = readbyte(PC++);
     MEMPTR_H = readbyte(PC);
 
     if (offset == NULL || strlen(offset) == 0 || is_flag_true(condition)) {

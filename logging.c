@@ -9,7 +9,7 @@ void log_message(const char *filename, unsigned int line, const char *function, 
     va_start(args, message);
 
     if (strcmp(level, "DEBUG") == 0) {
-        fprintf(stdout, "[%s] %s:%d:%s - ", level, filename, line, function);
+        fprintf(stderr, "[%s] %s - ", level, function);
     } else {
         fprintf(stderr, "[%s] %s:%d - ", level, filename, line);
     }
