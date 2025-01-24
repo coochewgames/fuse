@@ -739,6 +739,7 @@ void op_SHIFT(const char *value) {
             return;
         }
 
+        DEBUG("PC:%04x, shifted id:%02x, op:%s %s,%s", (PC - 1), opcode_id, get_mnemonic_name(op.op), op.operand_1, op.operand_2);
         call_z80_op_func(op);
 
         //  The shift is complete, so reset the current_op to the base set.
