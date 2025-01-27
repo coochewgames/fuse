@@ -401,8 +401,8 @@ void op_JP(const char *operand_1, const char *operand_2) {
 }
 
 /*
- *  The original Perl code does not take into account the offset string literal being passed
- *  as the only operand(ie. no condition); it therefore uses "offset" as a condition check.
+ *  The original Perl code checks for no second operand (offset) and if so, it transfer the first operand (condition) to the second (offset) and
+ *  blanks out the first (condition).
  * 
  *  This has been updated to just check for "offset" as the first operand.
  */

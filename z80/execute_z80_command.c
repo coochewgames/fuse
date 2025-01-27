@@ -211,6 +211,8 @@ void _LD16_RRNN(libspectrum_byte *regl, libspectrum_byte *regh) {
 
 void _JP(void) {
     PC = MEMPTR_W;
+
+    DEBUG("PC set to 0x%04X", PC);
 }
 
 void _JR(void) {
@@ -223,6 +225,8 @@ void _JR(void) {
     PC += jrtemp;
     PC++;
     MEMPTR_W = PC;
+
+    DEBUG("PC relative jump of %d to 0x%04X", (int)jrtemp, PC);
 }
 
 void _OR(libspectrum_byte value) {
