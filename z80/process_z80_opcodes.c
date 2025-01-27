@@ -208,8 +208,8 @@ void z80_do_opcodes(void) {
 
         //  Retrieve the operation from the Z80 operation set given the opcode id retrieved above then call the associated function
         op = z80_ops_set[OP_SET_BASE].op_codes[opcode_id];
-        
-        DEBUG("PC:%04x, id:%02x, op:%s %s,%s", PC - 1, opcode_id, get_mnemonic_name(op.op), op.operand_1, op.operand_2);
+
+        DEBUG("PC:0x%04x, id:0x%02x, op:%s %s,%s", PC - 1, opcode_id, get_mnemonic_name(op.op), op.operand_1, op.operand_2);
         call_z80_op_func(op);
     }
 }

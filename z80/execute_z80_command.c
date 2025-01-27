@@ -216,6 +216,7 @@ void _JP(void) {
 }
 
 void _JR(void) {
+    //  The byte value read can be negative, so we need to cast it to a signed byte
     libspectrum_signed_byte jrtemp = readbyte(PC);
 
     for (int i = 0; i < 5; i++) {

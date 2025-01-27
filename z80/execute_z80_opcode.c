@@ -712,6 +712,7 @@ void op_SHIFT(const char *value) {
         current_op = (current_op == CURRENT_OP_DD) ? CURRENT_OP_DDCB : CURRENT_OP_FDCB;
         op = z80_ops_set[OP_SET_DDFDCB].op_codes[opcode_id];
 
+        DEBUG("PC:0x%04x, shifted id (%d):0x%02x, op:%s %s,%s", (PC - 1), (int)current_op, opcode_id, get_mnemonic_name(op.op), op.operand_1, op.operand_2);
         call_z80_op_func(op);
     } else {
 	    perform_contend_read(PC, 4);
@@ -739,7 +740,7 @@ void op_SHIFT(const char *value) {
             return;
         }
 
-        DEBUG("PC:%04x, shifted id:%02x, op:%s %s,%s", (PC - 1), opcode_id, get_mnemonic_name(op.op), op.operand_1, op.operand_2);
+        DEBUG("PC:0x%04x, shifted id (%d):0x%02x, op:%s %s,%s", (PC - 1), (int)current_op, opcode_id, get_mnemonic_name(op.op), op.operand_1, op.operand_2);
         call_z80_op_func(op);
 
         //  The shift is complete, so reset the current_op to the base set.
@@ -1255,7 +1256,7 @@ static void ldir_lddr(Z80_MNEMONIC op) {
 
 	if (BC) {
         for (int i = 0; i < 5; i++) {
-            perform_contend_read_no_mreq(DE, 1);
+            perform_contend_write_no_mreq(DE, 1);
         }
 
         PC -= 2;
