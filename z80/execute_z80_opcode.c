@@ -1239,9 +1239,11 @@ static void ldi_ldd(Z80_MNEMONIC op) {
  */
 static void ldir_lddr(Z80_MNEMONIC op) {
     int modifier = (op == LDIR) ? 1 : -1;
-	libspectrum_byte bytetemp=readbyte(HL);
-
+	libspectrum_byte bytetemp;
+    
+    bytetemp = readbyte(HL);
 	writebyte(DE, bytetemp);
+
 	perform_contend_write_no_mreq(DE, 1);
     perform_contend_write_no_mreq(DE, 1);
 
@@ -1253,6 +1255,8 @@ static void ldir_lddr(Z80_MNEMONIC op) {
 	    ( bytetemp & FLAG_3 ) |
         ( (bytetemp & BIT_1) ? FLAG_5 : 0 );
 	Q = F;
+
+    DEBUG("LDIR/LDDR: BC:%d, HL:0x%04x, DE:0x%04x, F:0x%02x", BC, HL, DE, F);
 
 	if (BC) {
         for (int i = 0; i < 5; i++) {

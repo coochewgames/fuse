@@ -111,7 +111,6 @@
 #include "utils.h"
 
 #include "z80/z80.h"
-#include "z80/z80_opcodes.h"
 
 
 /* What name were we called under? */
@@ -377,11 +376,6 @@ static int fuse_init(int argc, char **argv)
      messages */
   if( display_init(&argc,&argv) ) return 1;
 #endif
-
-  if (init_op_sets() == false) {
-    ui_error(UI_ERROR_ERROR, "Failed to initialise opcode sets");
-    return 1;
-  }
 
   if( settings_init( &first_arg, argc, argv ) ) return 1;
 

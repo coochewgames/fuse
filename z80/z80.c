@@ -41,6 +41,8 @@
 #include "z80.h"
 #include "z80_internals.h"
 #include "z80_macros.h"
+#include "z80/z80_opcodes.h"
+
 
 /* Whether a half carry occurred or not can be determined by looking at
    the 3rd bit of the two arguments and the result; these are hashed
@@ -103,6 +105,11 @@ z80_interrupt_event_fn( libspectrum_dword event_tstates, int type,
 int
 z80_init( void *context )
 {
+  if (init_op_sets() == false) {
+    ui_error(UI_ERROR_ERROR, "Failed to initialise opcode sets");
+    return 1;
+  }
+
   z80_init_tables();
 
   z80_interrupt_event = event_register( z80_interrupt_event_fn,
