@@ -8,7 +8,7 @@ void _AND(libspectrum_byte value);
 void _ADC(libspectrum_byte value);
 void _ADC16(libspectrum_word value);
 void _ADD(libspectrum_byte value);
-void _ADD16(libspectrum_word value1, libspectrum_word value2);
+void _ADD16(libspectrum_word *value1, libspectrum_word value2);
 void _BIT(libspectrum_byte bit, libspectrum_byte value);
 void _BIT_MEMPTR(libspectrum_byte bit, libspectrum_byte value);
 void _CALL(void);

@@ -726,9 +726,17 @@ void op_SHIFT(const char *value) {
         if (strcmp(value, "DD") == 0) {
             current_op = CURRENT_OP_DD;
             op = z80_ops_set[OP_SET_DDFD].op_codes[opcode_id];
+
+            if (op.op == NOP) {
+                WARNING("DD instruction found with NOP opcode: id %02x", opcode_id);
+            }
         } else if (strcmp(value, "FD") == 0) {
             current_op = CURRENT_OP_FD;
             op = z80_ops_set[OP_SET_DDFD].op_codes[opcode_id];
+
+            if (op.op == NOP) {
+                WARNING("FD instruction found with NOP opcode: id %02x", opcode_id);
+            }
         } else if (strcmp(value, "CB") == 0) {
             current_op = CURRENT_OP_CB;
             op = z80_ops_set[OP_SET_CB].op_codes[opcode_id];
@@ -795,9 +803,9 @@ static void ld_dest_byte(const char *operand_1, const char *operand_2) {
     } else if ((word_reg = get_indirect_word_reg_name(operand_2)) != NULL) {
         if (strcmp(word_reg, "BC") == 0 || strcmp(word_reg, "DE") == 0) {
             MEMPTR_W = get_word_reg_value(word_reg) + 1;
-        } else {
-            *dest_reg = readbyte(get_word_reg_value(word_reg));
         }
+        
+        *dest_reg = readbyte(get_word_reg_value(word_reg));
     } else if (strcmp(operand_2, "(nnnn)") == 0) {
         MEMPTR_L = readbyte(PC++);
         MEMPTR_H = readbyte(PC++);
@@ -1024,7 +1032,7 @@ static void arithmetic_logical_word(Z80_MNEMONIC op, const char *operand_1, cons
     perform_contend_read_no_mreq_iterations(IR, 7);
 
     if (op == ADD) {
-        _ADD16(get_word_reg_value(operand_1), get_word_reg_value(operand_2));
+        _ADD16(get_word_reg(operand_1), get_word_reg_value(operand_2));
     } else {
         if (strcmp(operand_1, "HL") == 0) {
             libspectrum_word operand_2_value = get_word_reg_value(operand_2);
