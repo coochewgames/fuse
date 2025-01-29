@@ -40,6 +40,8 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS(config.h)
 AC_CANONICAL_HOST
 
+: ${CFLAGS="-g -O0"}
+
 dnl Use automake to produce `Makefile.in'
 AM_INIT_AUTOMAKE([1.11 foreign subdir-objects -Wall])
 AM_SILENT_RULES([yes])

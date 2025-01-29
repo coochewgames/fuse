@@ -144,34 +144,3 @@ void call_z80_op_func(Z80_OP op) {
             ERROR("Unexpected function type found for %s: %d", get_mnemonic_name(op.op), op.op_func_lookup.function_type);
     }
 }
-
-#ifdef TEST_READ_OPS_FROM_DAT_FILE
-int main() {
-    if (init_op_sets()) {
-        printf("\n****Init Op Sets complete.\n\n");
-
-        for (int enum_pos = 0; z80_ops_sets_list[enum_pos].name != NULL; enum_pos++) {
-            Z80_OPS ops = z80_ops_set[enum_pos];
-
-            if (ops.num_op_codes > 0) {
-                printf("Successfully read %d opcodes for %s.\n", ops.num_op_codes, z80_ops_sets_list[enum_pos].name);
-
-                for (int i = 0; i < ops.num_op_codes; i++) {
-                    Z80_OP op_code = ops.op_codes[i];
-                    printf("ID: %02X, OP: %s, Operand 1: %s, Operand 2: %s\n", op_code.id, get_mnemonic_name(op_code.op), op_code.operand_1, op_code.operand_2);
-                }
-            } else {
-                printf("Failed to read op codes for %s.\n", z80_ops_sets_list[enum_pos].name);
-            }
-        }
-
-        for (int enum_pos = 0; z80_ops_sets_list[enum_pos].name != NULL; enum_pos++) {
-            Z80_OPS ops = z80_ops_set[enum_pos];
-
-            free(ops.op_codes);
-        }
-    }
-
-    return 0;
-}
-#endif

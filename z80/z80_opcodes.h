@@ -12,6 +12,9 @@
  */
 #define MAX_OPERAND_LENGTH 15
 
+//  The maximum number of op codes given the id is stored in a single byte
+#define MAX_OP_CODE_IDS 256
+
 typedef void (*OP_FUNC_NO_PARAMS)(void);
 typedef void (*OP_FUNC_ONE_PARAM)(const char *value);
 typedef void (*OP_FUNC_TWO_PARAMS)(const char *value1, const char *value2);
@@ -47,7 +50,7 @@ typedef struct {
 
 typedef struct {
     int num_op_codes;
-    Z80_OP *op_codes;  // Sparse array of op codes with the opcode ID as the index
+    Z80_OP op_codes[MAX_OP_CODE_IDS];  // Sparse array of op codes with the opcode ID as the index
 } Z80_OPS;
 
 typedef enum {

@@ -10,10 +10,8 @@
 #define MAX_LINE_LENGTH 50
 #define MAX_MNEMONIC_LENGTH 10
 
-static const int INITIAL_CAPACITY = 10;
 
-
-static bool add_op_code(int *capacity, Z80_OP op_code, Z80_OPS *ops);
+static void init_op_codes(Z80_OPS *ops);
 
 
 /*
@@ -28,19 +26,16 @@ Z80_OPS read_op_codes(const char *filename) {
 
     FILE *file = fopen(filename, "rt");
     char line[MAX_LINE_LENGTH];
-    
     int line_count = 0;
-    int capacity = 0;
 
     if (!file) {
         ERROR("Failed to open file '%s': %s", filename, strerror(errno));
         return ops;
     }
 
-    while (fgets(line, sizeof(line), file)) {
-        Z80_MNEMONIC op = UNKNOWN_MNEMONIC;
-        Z80_OP op_code = {0};
+    init_op_codes(&ops);
 
+    while (fgets(line, sizeof(line), file)) {
         unsigned int id;
         char mnemonic[MAX_MNEMONIC_LENGTH];
         char operands[MAX_LINE_LENGTH] = "";
@@ -65,15 +60,14 @@ Z80_OPS read_op_codes(const char *filename) {
             continue;
         }
 
-        if (numFields == 1) {
-            //  id has been retrieved but with no command, so add a NOP command.
-            op_code.id = (unsigned char)id;
-            op_code.op = NOP;
-            op_code.op_func_lookup = get_z80_op_func(NOP);
-        } else {
-            op = get_mnemonic_enum(mnemonic);
+        //  An id that has an id but with no command, is left as a NOP command.
+        if (numFields > 1) {
+            Z80_MNEMONIC op_mnemonic = UNKNOWN_MNEMONIC;
+            Z80_OP *op = NULL;
 
-            if (op == UNKNOWN_MNEMONIC) {
+            op_mnemonic = get_mnemonic_enum(mnemonic);
+
+            if (op_mnemonic == UNKNOWN_MNEMONIC) {
                 ERROR("Unknown mnemonic found at line %d: %s", line_count, mnemonic);
                 continue;
             }
@@ -90,19 +84,17 @@ Z80_OPS read_op_codes(const char *filename) {
                 }
             }
 
-            op_code.id = (unsigned char)id;
-            op_code.op = op;
-            op_code.op_func_lookup = get_z80_op_func(op);
+            op  = &ops.op_codes[id];
 
-            strncpy(op_code.operand_1, operand1, MAX_OPERAND_LENGTH);
-            strncpy(op_code.operand_2, operand2, MAX_OPERAND_LENGTH);
-            strncpy(op_code.extras, extras, MAX_OPERAND_LENGTH);
-        }
+            op->id = (unsigned char)id;
+            op->op = op_mnemonic;
+            op->op_func_lookup = get_z80_op_func(op_mnemonic);
 
-        if (add_op_code(&capacity, op_code, &ops) == false) {
-            fclose(file);
+            strncpy(op->operand_1, operand1, MAX_OPERAND_LENGTH);
+            strncpy(op->operand_2, operand2, MAX_OPERAND_LENGTH);
+            strncpy(op->extras, extras, MAX_OPERAND_LENGTH);
 
-            return ops;
+            ops.num_op_codes++;
         }
     }
 
@@ -110,26 +102,13 @@ Z80_OPS read_op_codes(const char *filename) {
     return ops;
 }
 
-static bool add_op_code(int *capacity, Z80_OP op_code, Z80_OPS *ops) {
-    if (ops->num_op_codes != op_code.id) {
-        INFO("Out of sequence opcode ID (0x%02X:%d %s) found; current array position %d", op_code.id, op_code.id, get_mnemonic_name(op_code.op), ops->num_op_codes);
+static void init_op_codes(Z80_OPS *ops) {
+    for (int id = 0; id < MAX_OP_CODE_IDS; id++) {
+        Z80_OP *op = &ops->op_codes[id];
+
+
+        op->id = (unsigned char)id;
+        op->op = NOP;
+        op->op_func_lookup = get_z80_op_func(NOP);
     }
-
-    if (op_code.id >= *capacity) {
-        (*capacity) = op_code.id + INITIAL_CAPACITY;
-
-        Z80_OP *new_op_codes = (Z80_OP *)realloc(ops->op_codes, (*capacity) * sizeof(Z80_OP));
-
-        if (!new_op_codes) {
-            FATAL("Failed to reallocate memory");
-            return false;
-        }
-        
-        ops->op_codes = new_op_codes;
-    }
-
-    ops->op_codes[(int)op_code.id] = op_code;
-    ops->num_op_codes = op_code.id + 1;
-
-    return true;
 }
