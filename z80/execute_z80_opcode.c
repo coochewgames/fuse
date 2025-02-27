@@ -759,15 +759,23 @@ void op_SHIFT(const char *value) {
 /*
  *  The following functions are called by Op Codes functions and perform the necessary operations
  *  by calling the commands in `execute_z80_command.c`.
+ * 
+ *  This can be called for DD and FD instructions to set the IX or IY register high or low bytes;
+ *  so the initial name for the register is checked to ensure it is a single character before being
+ *  assigned to the src or dest fields.
  */
 
 static void ld_dest_byte(const char *operand_1, const char *operand_2) {
-    char dest = operand_1[0];
+    char dest = 'X';
     libspectrum_byte *dest_reg = get_byte_reg_from_operand(operand_1);
     const char *word_reg;
 
+    if (strlen(operand_1) == 1) {
+        dest = operand_1[0];
+    }
+
     if (is_byte_reg_from_operand(operand_2)) {
-        char src = 'X'; // Placeholder for FFDD extended register for IX or IY high or low bytes
+        char src = 'Y';
 
         if (strlen(operand_2) == 1) {
             src = operand_2[0];
@@ -786,7 +794,7 @@ static void ld_dest_byte(const char *operand_1, const char *operand_2) {
         } else if (dest == 'A' && src == 'R') {
             A = (R & LOWER_SEVEN_BITS_MASK) | (R7 & BIT_7);
         } else if (dest != src) {
-            *dest_reg = get_byte_reg_value(src);
+            *dest_reg = *get_byte_reg_from_operand(operand_2);
         }
 
         if (dest == 'A' && (src == 'I' || src == 'R')) {
