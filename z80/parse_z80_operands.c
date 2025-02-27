@@ -170,18 +170,21 @@ bool is_indirect_word_reg(const char *operand) {
 }
 
 /*
- *  Return the word register from an indirect word operand.
+ *  Return the word register from an indirect word operand; ensure the string is kept in memory when using the return value.
  */
 const char *get_indirect_word_reg_name(const char *operand) {
-    static char indirect_word_reg[INDIRECT_WORD_OPERAND_LEN] = "";
+    static char indirect_word_reg[INDIRECT_WORD_OPERAND_LEN];
 
-    if (strlen(operand) == INDIRECT_WORD_OPERAND_LEN &&
-        operand[0] == '(' && operand[INDIRECT_WORD_OPERAND_LEN - 1] == ')') {
+    *indirect_word_reg = '\0';
+
+    if (strlen(operand) == INDIRECT_WORD_OPERAND_LEN && operand[0] == '(' && operand[INDIRECT_WORD_OPERAND_LEN - 1] == ')') {
         strncpy(indirect_word_reg, operand + 1, WORD_OPERAND_LEN);
         indirect_word_reg[WORD_OPERAND_LEN] = '\0';
+
+        return indirect_word_reg;
     }
 
-    return indirect_word_reg;
+    return NULL;
 }
 
 /*

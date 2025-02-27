@@ -812,7 +812,11 @@ static void ld_dest_byte(const char *operand_1, const char *operand_2) {
         A = readbyte(MEMPTR_W++);
     } else if (is_DDFD_op()) {
         if (strcmp(operand_2, "(REGISTER+dd)") == 0) {
-            *get_DDFD_byte_reg_from_operand(operand_1) = get_DDFD_byte_reg_value_from_operand(operand_2);
+            if (strlen(operand_1) == 1) {
+                *get_byte_reg_from_operand(operand_1) = get_DDFD_byte_reg_value_from_operand(operand_2);
+            } else {
+                ERROR("Unexpected (REGISTER+dd) operand 1 source byte register found for LD: %s", operand_1);
+            }
         } else {
             ERROR("Unexpected DDFD operand 2 source word register found for LD: %s", operand_2);
         }
@@ -959,9 +963,9 @@ static void arithmetic_logical(Z80_MNEMONIC op, const char *operand_1, const cha
         return;
     }
 
-    if (strlen(op_1) == 1) {
+    if (is_byte_reg_from_operand(op_1)) {
         arithmetic_logical_byte(op, op_2);
-    } else if (strlen(op_1) == 2) {
+    } else if (is_word_reg_from_operand(op_1)) {
         arithmetic_logical_word(op, op_1, op_2);
     } else {
         ERROR("Unexpected operand 1 length found for %s: %s", get_mnemonic_name(op), op_1);
@@ -1023,16 +1027,40 @@ static void arithmetic_logical_byte(Z80_MNEMONIC op, const char *operand_2) {
     }
 }
 
+/*
+ *  For a DDFD word operation, either of the arguments may be REGISTER.
+ *  In each case, the first operand is the address of a register and the second operand is a value.
+ */
 static void arithmetic_logical_word(Z80_MNEMONIC op, const char *operand_1, const char *operand_2) {
-    if (strlen(operand_2) != 2) {
-        WARNING("Unexpected register in operand 2 found for %s: %s", get_mnemonic_name(op), operand_2);
-        return;
-    }
-
     perform_contend_read_no_mreq_iterations(IR, 7);
 
     if (op == ADD) {
-        _ADD16(get_word_reg(operand_1), get_word_reg_value(operand_2));
+        libspectrum_word *reg_1;
+        libspectrum_word reg_2_value = 0;
+
+        if (is_DDFD_op() && strcmp(operand_1, "REGISTER") == 0) {
+            reg_1 = get_DDFD_word_reg();
+        } else {
+            if (strlen(operand_1) == 2) {
+                reg_1 = get_word_reg(operand_1);
+            } else {
+                ERROR("Unexpected operand 1 found for %s: %s", get_mnemonic_name(op), operand_1);
+                return;
+            }
+        }
+
+        if (is_DDFD_op() && strcmp(operand_2, "REGISTER") == 0) {
+            reg_2_value = get_DDFD_word_reg_value();
+        } else {
+            if (strlen(operand_2) == 2) {
+                reg_2_value = get_word_reg_value(operand_2);
+            } else {
+                ERROR("Unexpected operand 2 found for %s: %s", get_mnemonic_name(op), operand_2);
+                return;
+            }
+        }
+
+        _ADD16(reg_1, reg_2_value);
     } else {
         if (strcmp(operand_1, "HL") == 0) {
             libspectrum_word operand_2_value = get_word_reg_value(operand_2);
@@ -1048,7 +1076,7 @@ static void arithmetic_logical_word(Z80_MNEMONIC op, const char *operand_1, cons
                     ERROR("Unexpected operation found with 16-bit register operand for %s: %s", get_mnemonic_name(op), operand_2);
             }
         } else {
-            WARNING("Expected operand 1 to be HL for %s: Found %s", get_mnemonic_name(op), operand_1);
+            ERROR("Expected operand 1 to be HL for %s: Found %s", get_mnemonic_name(op), operand_1);
         }
     }
 }
@@ -1170,9 +1198,9 @@ static void inc_dec(Z80_MNEMONIC op, const char *operand) {
 
         	writebyte(MEMPTR_W, value);
         } else {
-            libspectrum_byte value = get_DDFD_offset_value();
+            libspectrum_byte *reg = get_DDFD_byte_reg_from_operand(operand);
 
-            (op == INC) ? _INC(&value) : _DEC(&value);
+            (op == INC) ? _INC(reg) : _DEC(reg);
         }
     } else {
         ERROR("Unexpected operand found for %s: %s", get_mnemonic_name(op), operand);

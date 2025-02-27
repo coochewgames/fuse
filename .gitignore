@@ -98,12 +98,8 @@ tags
 /z80/coretest
 /z80/coretest.exe
 /z80/coretest.out
-/z80/opcodes_base.c
 /z80/tests.actual
-/z80/z80_cb.c
-/z80/z80_ddfd.c
-/z80/z80_ddfdcb.c
-/z80/z80_ed.c
+z80/tests/*
 /.idea
 /fuse-*-win32/
 /*.txt
