@@ -1509,6 +1509,9 @@ static void call_rotate_shift_op(Z80_MNEMONIC op, libspectrum_byte *reg) {
         case SRA:
             _SRA(reg);
             break;
+        case SLL:
+            _SLL(reg);
+            break;
         case SRL:
             _SRL(reg);
             break;
