@@ -173,8 +173,8 @@ void op_CCF(void) {
     Q = F;
 }
 
-void op_CP(const char *operand) {
-    arithmetic_logical(CP, operand, NULL);
+void op_CP(const char *operand_1, const char *operand_2) {
+    arithmetic_logical(CP, operand_1, operand_2);
 }
 
 void op_CPD(void) {

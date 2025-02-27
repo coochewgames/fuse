@@ -11,7 +11,7 @@ void op_AND(const char *operand_1, const char *operand_2);
 void op_BIT(const char *operand_1, const char *operand_2);
 void op_CALL(const char *operand_1, const char *operand_2);
 void op_CCF(void);
-void op_CP(const char *operand);
+void op_CP(const char *operand_1, const char *operand_2);
 void op_CPD(void);
 void op_CPDR(void);
 void op_CPI(void);
