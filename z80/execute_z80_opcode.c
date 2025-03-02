@@ -82,7 +82,9 @@ static void outi_outd(Z80_MNEMONIC op);
 static void push_pop(Z80_MNEMONIC op, const char *operand);
 
 static void res_set(Z80_MNEMONIC op, const char *operand_1, const char *operand_2);
+static void res_set_for_reg(Z80_MNEMONIC op, char bit_char, libspectrum_byte *reg);
 static unsigned char res_set_hexmask(Z80_MNEMONIC op, unsigned char bit_position);
+static bool is_res_set_op(Z80_MNEMONIC op);
 
 static void rotate_shift(Z80_MNEMONIC op, const char *operand);
 static void call_rotate_shift_offset_op(Z80_MNEMONIC op, libspectrum_word address);
@@ -700,7 +702,7 @@ void op_SHIFT(const char *value) {
         //  This is only called by the DD or FD instruction set to utilise the CB instruction set.
         libspectrum_word register_value = (current_op == CURRENT_OP_DD) ? IX : IY;
         Z80_OP op;
-        Z80_MNEMONIC cb_op;
+        Z80_MNEMONIC cb_op_mnemonic;
 
 	    perform_contend_read(PC, 3);
 	    MEMPTR_W = register_value + (libspectrum_signed_byte)readbyte_internal(PC);
@@ -715,13 +717,20 @@ void op_SHIFT(const char *value) {
         current_op = (current_op == CURRENT_OP_DD) ? CURRENT_OP_DDCB : CURRENT_OP_FDCB;
         op = z80_ops_set[OP_SET_DDFDCB].op_codes[opcode_id];
 
-        if ((cb_op = get_mnemonic_enum(op.operand_2)) != UNKNOWN_MNEMONIC) {
-            DEBUG("PC:0x%04x, shifted id (%d):0x%02x, op:%s %s,%s %s", (PC - 1), (int)current_op, opcode_id, get_mnemonic_name(op.op), op.operand_1, op.operand_2, op.extras);
+        if ((cb_op_mnemonic = get_mnemonic_enum(op.operand_2)) != UNKNOWN_MNEMONIC) {
+            DEBUG("PC:0x%04x, shifted id (%d):0x%02x, op:%s %s,%s %s", (PC - 1), (int)current_op, opcode_id, get_mnemonic_name(cb_op_mnemonic), op.operand_1, op.operand_2, op.extras);
 
-            if (is_rotate_shift_op(cb_op)) {
-                call_rotate_shift_offset_op_for_reg(cb_op, MEMPTR_W, get_byte_reg_from_operand(op.operand_1));
+            //  When the second operand is a CB mnemonic, the first operand is the register to be shifted.
+            libspectrum_byte *reg = get_byte_reg_from_operand(op.operand_1);
+
+            if (is_rotate_shift_op(cb_op_mnemonic)) {
+                call_rotate_shift_offset_op_for_reg(cb_op_mnemonic, MEMPTR_W, reg);
+            } else if (is_res_set_op(cb_op_mnemonic)) {
+                char bit_char = op.extras[0];
+
+                res_set_for_reg(cb_op_mnemonic, bit_char, reg);
             } else {
-                ERROR("Unexpected CB op found for DD/FD instruction: %s", op.operand_2);
+                ERROR("Unexpected CB op found for op_SHIFT: %s", op.operand_2);
             }
         } else {
             DEBUG("PC:0x%04x, shifted id (%d):0x%02x, op:%s %s,%s", (PC - 1), (int)current_op, opcode_id, get_mnemonic_name(op.op), op.operand_1, op.operand_2);
@@ -1464,6 +1473,21 @@ static void res_set(Z80_MNEMONIC op, const char *operand_1, const char *operand_
     }
 }
 
+static void res_set_for_reg(Z80_MNEMONIC op, char bit_char, libspectrum_byte *reg) {
+    if (bit_char < '0' || bit_char > '7') {
+        ERROR("Expected bit position for bit char for %s: Found this instead %c", get_mnemonic_name(op), bit_char);
+        return;
+    }
+
+    unsigned char bit_position = bit_char - '0';
+    unsigned char bit_mask = res_set_hexmask(op, bit_position);
+
+    *reg = (op == RES) ? readbyte(MEMPTR_W) & bit_mask : readbyte(MEMPTR_W) | bit_mask;
+
+    perform_contend_read_no_mreq(MEMPTR_W, 1);
+    writebyte(MEMPTR_W, *reg & bit_mask);
+}
+
 /*
  *  This function returns the hex mask for the given bit position.
  */
@@ -1475,6 +1499,10 @@ static unsigned char res_set_hexmask(Z80_MNEMONIC op, unsigned char bit_position
     }
 
     return mask;
+}
+
+static bool is_res_set_op(Z80_MNEMONIC op) {
+    return (op == RES || op == SET);
 }
 
 /*
@@ -1514,7 +1542,8 @@ static void call_rotate_shift_offset_op(Z80_MNEMONIC op, libspectrum_word addres
 }
 
 /*
- *  Utilise a value at a given address to call the appropriate rotate/shift operation using a register.
+ *  Utilise a value at a given address to call the appropriate rotate/shift operation using a register.  This is
+ *  only called for the DD and FD instructions when shifted to CB instructions.
  */
 static void call_rotate_shift_offset_op_for_reg(Z80_MNEMONIC op, libspectrum_word address, libspectrum_byte *reg) {
     *reg = readbyte(address);
