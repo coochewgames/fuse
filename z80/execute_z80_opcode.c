@@ -1485,7 +1485,7 @@ static void res_set_for_reg(Z80_MNEMONIC op, char bit_char, libspectrum_byte *re
     *reg = (op == RES) ? readbyte(MEMPTR_W) & bit_mask : readbyte(MEMPTR_W) | bit_mask;
 
     perform_contend_read_no_mreq(MEMPTR_W, 1);
-    writebyte(MEMPTR_W, *reg & bit_mask);
+    writebyte(MEMPTR_W, *reg);
 }
 
 /*
