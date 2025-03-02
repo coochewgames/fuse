@@ -1144,7 +1144,7 @@ static void cpi_cpir_cpd_cpdr(Z80_MNEMONIC op) {
     libspectrum_byte value = readbyte(HL);
     libspectrum_byte bytetemp = A - value;
     libspectrum_byte lookup;
-    int modifier = (op == CPIR) ? 1 : -1;
+    int modifier = (op == CPI || op == CPIR) ? 1 : -1;
 
     lookup = ( (A & FLAG_3) >> 3 ) |
         ( (value & FLAG_3) >> 2 ) |
