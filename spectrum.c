@@ -33,7 +33,6 @@
 #include "infrastructure/startup_manager.h"
 #include "loader.h"
 #include "machine.h"
-#include "memory_pages.h"
 #include "module.h"
 #include "peripherals/printer.h"
 #include "peripherals/ula.h"
@@ -49,9 +48,11 @@
 #include "ui/ui.h"
 #include "ui/uijoystick.h"
 #include "z80/z80.h"
+#include "memory_config.h"
+
 
 /* 1040 KB of RAM */
-libspectrum_byte RAM[ SPECTRUM_RAM_PAGES ][0x4000];
+libspectrum_byte RAM[ SPECTRUM_RAM_PAGES ][MEMORY_PAGE_SIZE * MEMORY_PAGES_IN_16K];
 
 /* How many tstates have elapsed since the last interrupt? (or more
    precisely, since the ULA last pulled the /INT line to the Z80 low) */
