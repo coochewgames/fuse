@@ -64,6 +64,7 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PATH_PROG(PERL, perl)
 AC_SUBST(PERL)
+AC_PROG_LEX([noyywrap])
 AM_PROG_LEX
 AC_PROG_YACC
 LT_INIT
@@ -89,14 +90,6 @@ dnl Check for big endianness
 AC_C_BIGENDIAN
 
 dnl Checks for header files.
-m4_warn([obsolete],
-[The preprocessor macro 'STDC_HEADERS' is obsolete.
-  Except in unusual embedded environments, you can safely include all
-  C89 headers unconditionally.])dnl
-# Autoupdate added the next two lines to ensure that your configure
-# script's behavior did not change.  They are probably safe to remove.
-AC_CHECK_INCLUDES_DEFAULT
-AC_PROG_EGREP
 
 AC_CHECK_HEADERS(
   libgen.h \
