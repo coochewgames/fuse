@@ -525,7 +525,7 @@ static void* network_thread(void* arg)
             }
         }
 
-        int socklen;
+        socklen_t socklen;
         struct sockaddr_in connected_addr;
         int sock = accept(gdbserver_socket, (struct sockaddr*)&connected_addr, &socklen);
         if (sock < 0)
