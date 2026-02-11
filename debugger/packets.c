@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <errno.h>
 #ifdef WIN32
 #include <winsock2.h>
 #else
@@ -23,6 +24,9 @@ struct packet_buf
     uint8_t buf[PACKET_BUF_SIZE];
     int end;
 } in, out;
+
+static void pktbuf_insert(struct packet_buf *pkt, const uint8_t *buf, ssize_t len);
+static void pktbuf_erase_head(struct packet_buf *pkt, ssize_t end);
 
 uint8_t *inbuf_get()
 {
@@ -45,7 +49,12 @@ void inbuf_reset()
     pktbuf_clear(&in);
 }
 
-void pktbuf_insert(struct packet_buf *pkt, const uint8_t *buf, ssize_t len)
+void inbuf_append_bytes(const uint8_t *buf, ssize_t len)
+{
+    pktbuf_insert(&in, buf, len);
+}
+
+static void pktbuf_insert(struct packet_buf *pkt, const uint8_t *buf, ssize_t len)
 {
     if (pkt->end + len >= sizeof(pkt->buf))
     {
@@ -57,7 +66,7 @@ void pktbuf_insert(struct packet_buf *pkt, const uint8_t *buf, ssize_t len)
     pkt->buf[pkt->end] = 0;
 }
 
-void pktbuf_erase_head(struct packet_buf *pkt, ssize_t end)
+static void pktbuf_erase_head(struct packet_buf *pkt, ssize_t end)
 {
     memmove(pkt->buf, pkt->buf + end, pkt->end - end);
     pkt->end -= end;
@@ -67,6 +76,21 @@ void pktbuf_erase_head(struct packet_buf *pkt, ssize_t end)
 void inbuf_erase_head(ssize_t end)
 {
     pktbuf_erase_head(&in, end);
+}
+
+const uint8_t *outbuf_get()
+{
+    return out.buf;
+}
+
+int outbuf_end()
+{
+    return out.end;
+}
+
+void outbuf_reset()
+{
+    pktbuf_clear(&out);
 }
 
 int read_data_once(int sockfd)
@@ -91,9 +115,19 @@ void write_flush(int sockfd)
         ssize_t nwritten = send(sockfd, (const void *)(out.buf + write_index), out.end - write_index, 0);
         if (nwritten < 0)
         {
-            printf("Write error\n");
+            if (errno == EINTR)
+            {
+                continue;
+            }
+            printf("Write error: %s\n", strerror(errno));
+            break;
         }
-        write_index += nwritten;
+        if (nwritten == 0)
+        {
+            printf("Write error: socket closed\n");
+            break;
+        }
+        write_index += (size_t)nwritten;
     }
     pktbuf_clear(&out);
 }

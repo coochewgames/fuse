@@ -788,6 +788,7 @@ unittests_run( void )
   r += mempool_test();
   r += paging_test();
   r += debugger_disassemble_unittest();
+  r += gdbserver_unittest();
 
   printf("Final return value: %d (should be 0)\n", r);
 

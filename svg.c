@@ -323,7 +323,7 @@ svg_startcapture( const char *name, svg_capture_type mode )
     if( name == NULL || *name == '\0' )
       name = "fuse";
 
-    svg_fnameroot = libspectrum_new( char, strlen ( name ) );
+    svg_fnameroot = libspectrum_new( char, strlen ( name ) + 1 );
     strcpy( svg_fnameroot, name );
     svg_filecount = 0;
 

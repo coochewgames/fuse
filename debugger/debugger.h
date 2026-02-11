@@ -103,5 +103,6 @@ void debugger_system_variable_register(
 
 /* Unit tests */
 int debugger_disassemble_unittest( void );
+int gdbserver_unittest( void );
 
 #endif				/* #ifndef FUSE_DEBUGGER_H */

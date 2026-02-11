@@ -78,11 +78,14 @@ static uint8_t action_get_registers(const void* arg, void* response);
 static uint8_t action_set_registers(const void* arg, void* response);
 static uint8_t action_get_mem(const void* arg, void* response);
 static uint8_t action_set_mem(const void* arg, void* response);
+static uint8_t action_set_mem_binary(const void* arg, void* response);
 static uint8_t action_get_register(const void* arg, void* response);
 static uint8_t action_set_register(const void* arg, void* response);
 static uint8_t action_set_breakpoint(const void* arg, void* response);
 static uint8_t action_remove_breakpoint(const void* arg, void* response);
 static uint8_t action_step_instruction(const void* arg, void* response);
+static int gdbserver_unittest_expect_e01(const char *payload);
+static int gdbserver_unittest_outbuf_contains(const char *needle);
 
 struct action_mem_args_t {
     size_t maddr, mlen;
@@ -232,6 +235,7 @@ static uint8_t process_packet()
 {
     uint8_t *inbuf = inbuf_get();
     int inbuf_size = inbuf_end();
+    size_t recv_data_len;
   
     if (inbuf_size == 0)
     {
@@ -254,26 +258,43 @@ static uint8_t process_packet()
     }
   
     int packetend = packetend_ptr - inbuf;
+    if (packetend + 2 >= inbuf_size)
+    {
+        return 0;
+    }
+
     assert('$' == inbuf[0]);
     inbuf[packetend] = '\0';
 
     uint8_t checksum = 0;
+    int checksum_hi = hex(inbuf[packetend + 1]);
+    int checksum_lo = hex(inbuf[packetend + 2]);
     int i;
     for (i = 1; i < packetend; i++)
         checksum += inbuf[i];
   
-    if (checksum != (hex(inbuf[packetend + 1]) << 4 | hex(inbuf[packetend + 2])))
+    if (checksum_hi < 0 || checksum_lo < 0 ||
+        checksum != ((checksum_hi << 4) | checksum_lo))
     {
         inbuf_erase_head(packetend + 3);
         return 1;
     }
   
-    char recv_data[1024];
-    strcpy(recv_data, (char*)&inbuf[1]);
+    recv_data_len = (size_t)(packetend - 1);
+    if (recv_data_len >= PACKET_BUF_SIZE) {
+        inbuf_erase_head(packetend + 3);
+        write_packet("E01");
+        return 1;
+    }
+
+    char recv_data[PACKET_BUF_SIZE];
+    memcpy(recv_data, &inbuf[1], recv_data_len);
+    recv_data[recv_data_len] = '\0';
     inbuf_erase_head(packetend + 3);
   
     char request = recv_data[0];
     char *payload = (char *)&recv_data[1];
+    size_t payload_len = recv_data_len ? recv_data_len - 1 : 0;
 
     switch (request)
     {
@@ -357,10 +378,16 @@ static uint8_t process_packet()
         case 'P':
         {
             struct action_register_args_t r;
-            r.reg = strtol(payload, NULL, 16);
-            assert('=' == *payload++);
-          
-            hex2mem(payload, (void *)&r.value, SZ * 2);
+            char *reg_end;
+
+            r.reg = strtol(payload, &reg_end, 16);
+            if (reg_end == payload || *reg_end != '=' ||
+                strlen(reg_end + 1) != SZ * 2) {
+                write_packet("E01");
+                break;
+            }
+
+            hex2mem(reg_end + 1, (void *)&r.value, SZ);
           
             if (gdbserver_execute_on_main_thread(action_set_register, &r, tmpbuf))
                 write_packet((const char*)tmpbuf);
@@ -423,8 +450,12 @@ static uint8_t process_packet()
                 write_packet("E01");
                 break;
             }
+            if (offset < 0 || (size_t)offset > payload_len) {
+                write_packet("E01");
+                break;
+            }
             payload += offset;
-            new_len = unescape(payload, (char *)packetend_ptr - payload);
+            new_len = unescape(payload, payload_len - offset);
             if (new_len != mlen) {
                 write_packet("E01");
                 break;
@@ -435,7 +466,7 @@ static uint8_t process_packet()
             mem.maddr = maddr;
             mem.mlen = mlen;
           
-            if (gdbserver_execute_on_main_thread(action_set_mem, &mem, tmpbuf))
+            if (gdbserver_execute_on_main_thread(action_set_mem_binary, &mem, tmpbuf))
                 write_packet((const char*)tmpbuf);
             break;
         }
@@ -525,8 +556,8 @@ static void* network_thread(void* arg)
             }
         }
 
-        socklen_t socklen;
         struct sockaddr_in connected_addr;
+        socklen_t socklen = sizeof(connected_addr);
         int sock = accept(gdbserver_socket, (struct sockaddr*)&connected_addr, &socklen);
         if (sock < 0)
         {
@@ -625,14 +656,16 @@ int gdbserver_start( int port )
         return 3;
     }
 
+    gdbserver_port = port;
+    gdbserver_debugging_enabled = 1;
+
     if (pthread_create(&network_thread_id, NULL, network_thread, NULL) != 0)
     {
+        gdbserver_debugging_enabled = 0;
         utils_networking_end();
         return 4;
     }
 
-    gdbserver_port = port;
-    gdbserver_debugging_enabled = 1;
     return 0;
 }
 
@@ -821,6 +854,24 @@ static uint8_t action_set_mem(const void* arg, void* response)
     return 0;
 }
 
+static uint8_t action_set_mem_binary(const void* arg, void* response)
+{
+    uint32_t t = tstates;
+    int i;
+    struct action_mem_args_t* mem = (struct action_mem_args_t*)arg;
+    char* resp_buff = (char*)response;
+    libspectrum_word address = mem->maddr;
+
+    for (i = 0; i < mem->mlen; i++, address++)
+    {
+        writebyte(address, mem->payload[i]);
+    }
+
+    tstates = t;
+    strcpy(resp_buff, "OK");
+    return 0;
+}
+
 static uint8_t action_get_register(const void* arg, void* response)
 {
     struct action_register_args_t* r = (struct action_register_args_t*)arg;
@@ -1005,4 +1056,97 @@ int gdbserver_activate()
     pthread_mutex_unlock(&trap_process_mutex);
 
     return 0;
+}
+
+static int gdbserver_unittest_outbuf_contains(const char *needle)
+{
+    const uint8_t *buf = outbuf_get();
+    int buf_len = outbuf_end();
+    size_t needle_len = strlen(needle);
+    int i;
+
+    if (!needle_len || buf_len < (int)needle_len) return 0;
+
+    for (i = 0; i <= buf_len - (int)needle_len; i++)
+    {
+        if (!memcmp(buf + i, needle, needle_len)) return 1;
+    }
+
+    return 0;
+}
+
+static int gdbserver_unittest_expect_e01(const char *payload)
+{
+    char packet[PACKET_BUF_SIZE];
+    size_t payload_len = strlen(payload);
+    unsigned int checksum = 0;
+    size_t i;
+
+    for (i = 0; i < payload_len; i++) checksum += (unsigned char)payload[i];
+
+    if (snprintf(packet, sizeof(packet), "$%s#%02x", payload, checksum & 0xff) < 0)
+    {
+        printf("%s:%d: failed to construct test packet\n", __FILE__, __LINE__);
+        return 1;
+    }
+
+    inbuf_reset();
+    outbuf_reset();
+    inbuf_append_bytes((const uint8_t *)packet, strlen(packet));
+
+    if (process_packet() != 0)
+    {
+        printf("%s:%d: malformed packet unexpectedly requested more processing: %s\n",
+               __FILE__, __LINE__, payload);
+        return 1;
+    }
+
+    if (!gdbserver_unittest_outbuf_contains("$E01#"))
+    {
+        printf("%s:%d: malformed packet did not produce E01: %s\n",
+               __FILE__, __LINE__, payload);
+        return 1;
+    }
+
+    return 0;
+}
+
+int gdbserver_unittest( void )
+{
+    const char *truncated_packet = "$m0,1#0";
+    int truncated_len = strlen(truncated_packet);
+    int r = 0;
+
+    r += gdbserver_unittest_expect_e01("P0");
+    r += gdbserver_unittest_expect_e01("P0=0");
+    r += gdbserver_unittest_expect_e01("X1000,2:A");
+
+    inbuf_reset();
+    outbuf_reset();
+    inbuf_append_bytes((const uint8_t *)truncated_packet, truncated_len);
+
+    if (process_packet() != 0)
+    {
+        printf("%s:%d: truncated packet should wait for more data\n",
+               __FILE__, __LINE__);
+        r++;
+    }
+
+    if (inbuf_end() != truncated_len)
+    {
+        printf("%s:%d: truncated packet should stay buffered\n",
+               __FILE__, __LINE__);
+        r++;
+    }
+
+    if (outbuf_end() != 0)
+    {
+        printf("%s:%d: truncated packet should not produce output\n",
+               __FILE__, __LINE__);
+        r++;
+    }
+
+    inbuf_reset();
+    outbuf_reset();
+    return r;
 }
