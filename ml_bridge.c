@@ -30,6 +30,7 @@
 #include "input.h"
 #include "machine.h"
 #include "memory_pages.h"
+#include "ml_game_adapter.h"
 #include "settings.h"
 #include "snapshot.h"
 #include "spectrum.h"
@@ -138,10 +139,16 @@ fuse_ml_key_event( input_event_type type, unsigned long key )
 static int
 fuse_ml_reset( void )
 {
-  if( fuse_ml_reset_snapshot && *fuse_ml_reset_snapshot )
-    return snapshot_read( fuse_ml_reset_snapshot );
+  int error;
 
-  return machine_reset( 1 );
+  if( fuse_ml_reset_snapshot && *fuse_ml_reset_snapshot )
+    error = snapshot_read( fuse_ml_reset_snapshot );
+  else
+    error = machine_reset( 1 );
+
+  if( !error ) fuse_ml_game_resync();
+
+  return error;
 }
 
 static int
@@ -276,6 +283,43 @@ fuse_ml_send_screen( int fd )
 }
 
 static int
+fuse_ml_action_step( int fd, unsigned long action, unsigned long frames )
+{
+  unsigned long key = 0;
+  int pressed = 0;
+  long reward = 0;
+  int done = 0;
+  char response[96];
+
+  if( !fuse_ml_game_enabled() )
+    return fuse_ml_send_text( fd, "ERR game adapter disabled\n" );
+
+  if( fuse_ml_game_get_action_key( action, &key ) )
+    return fuse_ml_send_text( fd, "ERR invalid action\n" );
+
+  if( key ) {
+    if( fuse_ml_key_event( INPUT_EVENT_KEYPRESS, key ) )
+      return fuse_ml_send_text( fd, "ERR key event failed\n" );
+    pressed = 1;
+  }
+
+  if( fuse_ml_step_frames( frames ) ) {
+    if( pressed ) fuse_ml_key_event( INPUT_EVENT_KEYRELEASE, key );
+    return fuse_ml_send_text( fd, "ERR step failed\n" );
+  }
+
+  if( pressed && fuse_ml_key_event( INPUT_EVENT_KEYRELEASE, key ) )
+    return fuse_ml_send_text( fd, "ERR key release failed\n" );
+
+  if( fuse_ml_game_evaluate( &reward, &done ) )
+    return fuse_ml_send_text( fd, "ERR game evaluate failed\n" );
+
+  snprintf( response, sizeof( response ), "ACT %u %ld %d\n",
+            (unsigned int)spectrum_frame_count(), reward, done );
+  return fuse_ml_send_text( fd, response );
+}
+
+static int
 fuse_ml_handle_command( int fd, char *line, int *disconnect )
 {
   char *command = strtok( line, " \t" );
@@ -351,6 +395,23 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
     }
 
     return fuse_ml_send_text( fd, "ERR mode must be HEADLESS or VISUAL\n" );
+  } else if( !strcmp( command, "GAME" ) ) {
+    char response[128];
+
+    if( arg1 || arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: GAME\n" );
+    if( fuse_ml_game_info( response, sizeof( response ) ) )
+      return fuse_ml_send_text( fd, "ERR game info unavailable\n" );
+    return fuse_ml_send_text( fd, response );
+  } else if( !strcmp( command, "ACT" ) ) {
+    unsigned long action, frames;
+
+    if( !arg1 || !arg2 || extra )
+      return fuse_ml_send_text( fd, "ERR usage: ACT <action> <frames>\n" );
+    if( fuse_ml_parse_ulong( arg1, &action ) ||
+        fuse_ml_parse_ulong( arg2, &frames ) )
+      return fuse_ml_send_text( fd, "ERR invalid action or frame count\n" );
+
+    return fuse_ml_action_step( fd, action, frames );
   } else if( !strcmp( command, "QUIT" ) ) {
     fuse_exiting = 1;
     *disconnect = 1;
@@ -416,6 +477,8 @@ fuse_ml_loop( void )
 {
   if( !fuse_ml_mode ) return 0;
 
+  fuse_ml_game_resync();
+
   while( !fuse_exiting ) {
     int client_fd = accept( fuse_ml_server_fd, NULL, NULL );
 
@@ -471,6 +534,8 @@ fuse_ml_shutdown( void )
     libspectrum_free( fuse_ml_reset_snapshot );
     fuse_ml_reset_snapshot = NULL;
   }
+
+  fuse_ml_game_shutdown();
 }
 
 #else
@@ -495,6 +560,7 @@ fuse_ml_loop( void )
 void
 fuse_ml_shutdown( void )
 {
+  fuse_ml_game_shutdown();
 }
 
 #endif
@@ -533,6 +599,8 @@ fuse_ml_configure_from_env( void )
 
   if( reset_snapshot && *reset_snapshot )
     fuse_ml_reset_snapshot = utils_safe_strdup( reset_snapshot );
+
+  fuse_ml_game_configure_from_env();
 
   settings_current.sound = 0;
   settings_current.sound_load = 0;

@@ -39,6 +39,11 @@ Set environment variables before starting `fuse`:
 - `FUSE_ML_RESET_SNAPSHOT=/path/to/state.szx` optionally sets reset target state.
 - `FUSE_ML_VISUAL=1` enables visual rendering in ML mode (default is headless).
 - `FUSE_ML_VISUAL_PACE_MS=16` optionally paces each stepped frame in visual mode.
+- `FUSE_ML_GAME=MANIC_MINER` enables the Stage 2.3 game adapter.
+- `FUSE_ML_ACTION_KEYS=0,54,55,48` optionally overrides action->key mapping.
+- `FUSE_ML_REWARD_ADDR=0x0000` optionally tracks reward as byte delta at address.
+- `FUSE_ML_DONE_ADDR=0x0000` optionally tracks episode end address.
+- `FUSE_ML_DONE_VALUE=0` optionally sets the done-match value (default `0`).
 
 In ML mode, sound and gdbserver are disabled, and the emulator listens on the
 socket for line-based commands:
@@ -54,6 +59,8 @@ socket for line-based commands:
 - `MODE`
 - `MODE HEADLESS`
 - `MODE VISUAL [pace_ms]`
+- `GAME`
+- `ACT <action> <frames>`
 - `QUIT`
 
 Responses are text lines:
@@ -63,7 +70,16 @@ Responses are text lines:
 - `INFO <frame_count> <tstates> <width> <height>` for emulator state
 - `SCREEN <width> <height> IDX8_HEX <hex bytes>` for palette-index frame data
 - `MODE <HEADLESS|VISUAL> <pace_ms>` for current run mode
+- `GAME OFF` when no adapter is active
+- `GAME ON <name> <actions> <reward_addr|-> <done_addr|-> <done_value>` for adapter settings
+- `ACT <frame_count> <reward> <done>` after action+step execution
 - `ERR ...` for failures
+
+For `MANIC_MINER`, the default actions are:
+- `0` no-op
+- `1` key `6` (left)
+- `2` key `7` (right)
+- `3` key `0` (jump)
 
 ## Notes
 With the refactoring, this version will require the dat files with the Z80 instruction sets to be available with the executable.  This will entail that they can be updated directly without the need to rebuild, which aligns with the ability to experiment with the different aspects of the emulator.
