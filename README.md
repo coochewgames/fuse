@@ -61,6 +61,7 @@ socket for line-based commands:
 - `MODE VISUAL [pace_ms]`
 - `GAME`
 - `ACT <action> <frames>`
+- `EPISODE_STEP <action> <frames> [auto_reset_0_or_1]`
 - `QUIT`
 
 Responses are text lines:
@@ -73,6 +74,8 @@ Responses are text lines:
 - `GAME OFF` when no adapter is active
 - `GAME ON <name> <actions> <reward_addr|-> <done_addr|-> <done_value>` for adapter settings
 - `ACT <frame_count> <reward> <done>` after action+step execution
+- `EPISODE <frame_count> <tstates> <width> <height> <reward> <done> <reset>` for
+  step+metadata, where `reset` is `1` only if auto-reset was requested and done was reached
 - `ERR ...` for failures
 
 For `MANIC_MINER`, the default actions are:

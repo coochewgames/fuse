@@ -51,6 +51,10 @@ static int fuse_ml_server_fd = -1;
 
 #ifndef WIN32
 
+static int fuse_ml_apply_action( unsigned long action, unsigned long frames,
+                                 long *reward, int *done,
+                                 const char **error_text );
+
 static int
 fuse_ml_send( int fd, const char *data, size_t length )
 {
@@ -285,37 +289,104 @@ fuse_ml_send_screen( int fd )
 static int
 fuse_ml_action_step( int fd, unsigned long action, unsigned long frames )
 {
-  unsigned long key = 0;
-  int pressed = 0;
   long reward = 0;
   int done = 0;
+  const char *error_text = NULL;
   char response[96];
 
-  if( !fuse_ml_game_enabled() )
-    return fuse_ml_send_text( fd, "ERR game adapter disabled\n" );
+  if( fuse_ml_apply_action( action, frames, &reward, &done, &error_text ) )
+    return fuse_ml_send_text( fd, error_text );
 
-  if( fuse_ml_game_get_action_key( action, &key ) )
-    return fuse_ml_send_text( fd, "ERR invalid action\n" );
+  snprintf( response, sizeof( response ), "ACT %u %ld %d\n",
+            (unsigned int)spectrum_frame_count(), reward, done );
+  return fuse_ml_send_text( fd, response );
+}
+
+static int
+fuse_ml_parse_bool( const char *text, int *value )
+{
+  unsigned long parsed = 0;
+
+  if( !text || !value ) return 1;
+  if( fuse_ml_parse_ulong( text, &parsed ) ) return 1;
+  if( parsed > 1 ) return 1;
+
+  *value = parsed ? 1 : 0;
+  return 0;
+}
+
+static int
+fuse_ml_apply_action( unsigned long action, unsigned long frames,
+                      long *reward, int *done, const char **error_text )
+{
+  unsigned long key = 0;
+  int pressed = 0;
+
+  if( reward ) *reward = 0;
+  if( done ) *done = 0;
+  if( error_text ) *error_text = "ERR action failed\n";
+
+  if( !fuse_ml_game_enabled() ) {
+    if( error_text ) *error_text = "ERR game adapter disabled\n";
+    return 1;
+  }
+
+  if( fuse_ml_game_get_action_key( action, &key ) ) {
+    if( error_text ) *error_text = "ERR invalid action\n";
+    return 1;
+  }
 
   if( key ) {
-    if( fuse_ml_key_event( INPUT_EVENT_KEYPRESS, key ) )
-      return fuse_ml_send_text( fd, "ERR key event failed\n" );
+    if( fuse_ml_key_event( INPUT_EVENT_KEYPRESS, key ) ) {
+      if( error_text ) *error_text = "ERR key event failed\n";
+      return 1;
+    }
     pressed = 1;
   }
 
   if( fuse_ml_step_frames( frames ) ) {
     if( pressed ) fuse_ml_key_event( INPUT_EVENT_KEYRELEASE, key );
-    return fuse_ml_send_text( fd, "ERR step failed\n" );
+    if( error_text ) *error_text = "ERR step failed\n";
+    return 1;
   }
 
-  if( pressed && fuse_ml_key_event( INPUT_EVENT_KEYRELEASE, key ) )
-    return fuse_ml_send_text( fd, "ERR key release failed\n" );
+  if( pressed && fuse_ml_key_event( INPUT_EVENT_KEYRELEASE, key ) ) {
+    if( error_text ) *error_text = "ERR key release failed\n";
+    return 1;
+  }
 
-  if( fuse_ml_game_evaluate( &reward, &done ) )
-    return fuse_ml_send_text( fd, "ERR game evaluate failed\n" );
+  if( fuse_ml_game_evaluate( reward, done ) ) {
+    if( error_text ) *error_text = "ERR game evaluate failed\n";
+    return 1;
+  }
 
-  snprintf( response, sizeof( response ), "ACT %u %ld %d\n",
-            (unsigned int)spectrum_frame_count(), reward, done );
+  return 0;
+}
+
+static int
+fuse_ml_episode_step( int fd, unsigned long action, unsigned long frames,
+                      int auto_reset )
+{
+  long reward = 0;
+  int done = 0;
+  int reset_performed = 0;
+  int width, height;
+  const char *error_text = NULL;
+  char response[160];
+
+  if( fuse_ml_apply_action( action, frames, &reward, &done, &error_text ) )
+    return fuse_ml_send_text( fd, error_text );
+
+  if( done && auto_reset ) {
+    if( fuse_ml_reset() ) return fuse_ml_send_text( fd, "ERR reset failed\n" );
+    reset_performed = 1;
+  }
+
+  fuse_ml_get_frame_dimensions( &width, &height );
+
+  snprintf( response, sizeof( response ), "EPISODE %u %u %d %d %ld %d %d\n",
+            (unsigned int)spectrum_frame_count(), (unsigned int)tstates,
+            width, height, reward, done, reset_performed );
   return fuse_ml_send_text( fd, response );
 }
 
@@ -325,6 +396,7 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
   char *command = strtok( line, " \t" );
   char *arg1 = strtok( NULL, " \t" );
   char *arg2 = strtok( NULL, " \t" );
+  char *arg3 = strtok( NULL, " \t" );
   char *extra = strtok( NULL, " \t" );
 
   if( !command ) return 0;
@@ -332,7 +404,7 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
   if( !strcmp( command, "PING" ) ) {
     return fuse_ml_send_text( fd, "OK PONG\n" );
   } else if( !strcmp( command, "RESET" ) ) {
-    if( arg1 || arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: RESET\n" );
+    if( arg1 || arg2 || arg3 || extra ) return fuse_ml_send_text( fd, "ERR usage: RESET\n" );
     if( fuse_ml_reset() ) return fuse_ml_send_text( fd, "ERR reset failed\n" );
     return fuse_ml_send_text( fd, "OK\n" );
   } else if( !strcmp( command, "KEYDOWN" ) || !strcmp( command, "KEYUP" ) ) {
@@ -340,7 +412,7 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
     input_event_type type =
       !strcmp( command, "KEYDOWN" ) ? INPUT_EVENT_KEYPRESS : INPUT_EVENT_KEYRELEASE;
 
-    if( !arg1 || arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: KEYDOWN|KEYUP <key>\n" );
+    if( !arg1 || arg2 || arg3 || extra ) return fuse_ml_send_text( fd, "ERR usage: KEYDOWN|KEYUP <key>\n" );
     if( fuse_ml_parse_ulong( arg1, &key ) ) return fuse_ml_send_text( fd, "ERR invalid key\n" );
     if( fuse_ml_key_event( type, key ) ) return fuse_ml_send_text( fd, "ERR key event failed\n" );
     return fuse_ml_send_text( fd, "OK\n" );
@@ -348,7 +420,7 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
     unsigned long frames;
     char response[80];
 
-    if( !arg1 || arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: STEP <frames>\n" );
+    if( !arg1 || arg2 || arg3 || extra ) return fuse_ml_send_text( fd, "ERR usage: STEP <frames>\n" );
     if( fuse_ml_parse_ulong( arg1, &frames ) ) return fuse_ml_send_text( fd, "ERR invalid frame count\n" );
     if( fuse_ml_step_frames( frames ) ) return fuse_ml_send_text( fd, "ERR step failed\n" );
 
@@ -358,23 +430,23 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
   } else if( !strcmp( command, "READ" ) ) {
     unsigned long address, length;
 
-    if( !arg1 || !arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: READ <addr> <len>\n" );
+    if( !arg1 || !arg2 || arg3 || extra ) return fuse_ml_send_text( fd, "ERR usage: READ <addr> <len>\n" );
     if( fuse_ml_parse_ulong( arg1, &address ) ||
         fuse_ml_parse_ulong( arg2, &length ) )
       return fuse_ml_send_text( fd, "ERR invalid address or length\n" );
 
     return fuse_ml_read_memory( fd, address, length );
   } else if( !strcmp( command, "GETINFO" ) ) {
-    if( arg1 || arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: GETINFO\n" );
+    if( arg1 || arg2 || arg3 || extra ) return fuse_ml_send_text( fd, "ERR usage: GETINFO\n" );
     return fuse_ml_send_info( fd );
   } else if( !strcmp( command, "GETSCREEN" ) ) {
-    if( arg1 || arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: GETSCREEN\n" );
+    if( arg1 || arg2 || arg3 || extra ) return fuse_ml_send_text( fd, "ERR usage: GETSCREEN\n" );
     return fuse_ml_send_screen( fd );
   } else if( !strcmp( command, "MODE" ) ) {
     if( !arg1 ) return fuse_ml_send_mode( fd, "MODE" );
 
     if( !strcmp( arg1, "HEADLESS" ) ) {
-      if( arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: MODE HEADLESS\n" );
+      if( arg2 || arg3 || extra ) return fuse_ml_send_text( fd, "ERR usage: MODE HEADLESS\n" );
       fuse_ml_visual_mode = 0;
       fuse_ml_visual_pace_ms = 0;
       return fuse_ml_send_mode( fd, "OK MODE" );
@@ -383,7 +455,7 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
     if( !strcmp( arg1, "VISUAL" ) ) {
       unsigned long pace = 0;
 
-      if( extra ) return fuse_ml_send_text( fd, "ERR usage: MODE VISUAL [pace_ms]\n" );
+      if( arg3 || extra ) return fuse_ml_send_text( fd, "ERR usage: MODE VISUAL [pace_ms]\n" );
       if( arg2 && fuse_ml_parse_ulong( arg2, &pace ) )
         return fuse_ml_send_text( fd, "ERR invalid pace\n" );
       if( pace > 10000 )
@@ -398,20 +470,33 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
   } else if( !strcmp( command, "GAME" ) ) {
     char response[128];
 
-    if( arg1 || arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: GAME\n" );
+    if( arg1 || arg2 || arg3 || extra ) return fuse_ml_send_text( fd, "ERR usage: GAME\n" );
     if( fuse_ml_game_info( response, sizeof( response ) ) )
       return fuse_ml_send_text( fd, "ERR game info unavailable\n" );
     return fuse_ml_send_text( fd, response );
   } else if( !strcmp( command, "ACT" ) ) {
     unsigned long action, frames;
 
-    if( !arg1 || !arg2 || extra )
+    if( !arg1 || !arg2 || arg3 || extra )
       return fuse_ml_send_text( fd, "ERR usage: ACT <action> <frames>\n" );
     if( fuse_ml_parse_ulong( arg1, &action ) ||
         fuse_ml_parse_ulong( arg2, &frames ) )
       return fuse_ml_send_text( fd, "ERR invalid action or frame count\n" );
 
     return fuse_ml_action_step( fd, action, frames );
+  } else if( !strcmp( command, "EPISODE_STEP" ) ) {
+    unsigned long action, frames;
+    int auto_reset = 0;
+
+    if( !arg1 || !arg2 || extra )
+      return fuse_ml_send_text( fd, "ERR usage: EPISODE_STEP <action> <frames> [auto_reset_0_or_1]\n" );
+    if( fuse_ml_parse_ulong( arg1, &action ) ||
+        fuse_ml_parse_ulong( arg2, &frames ) )
+      return fuse_ml_send_text( fd, "ERR invalid action or frame count\n" );
+    if( arg3 && fuse_ml_parse_bool( arg3, &auto_reset ) )
+      return fuse_ml_send_text( fd, "ERR invalid auto_reset value\n" );
+
+    return fuse_ml_episode_step( fd, action, frames, auto_reset );
   } else if( !strcmp( command, "QUIT" ) ) {
     fuse_exiting = 1;
     *disconnect = 1;
