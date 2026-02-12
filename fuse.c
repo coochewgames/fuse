@@ -391,7 +391,7 @@ static int fuse_init(int argc, char **argv)
     return 0;
   }
 
-  fuse_ml_configure_from_env();
+  if( fuse_ml_configure_from_env() ) return 1;
 
   start_scaler = utils_safe_strdup( settings_current.start_scaler_mode );
 

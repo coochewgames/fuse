@@ -41,6 +41,7 @@ Set environment variables before starting `fuse`:
 - `FUSE_ML_VISUAL_PACE_MS=16` optionally paces each stepped frame in visual mode.
 - `FUSE_ML_GAME=MANIC_MINER` enables the Stage 2.3 game adapter.
 - `FUSE_ML_ACTION_KEYS=0,54,55,48` optionally overrides action->key mapping.
+  Invalid values now cause Fuse ML startup to fail with an error.
 - `FUSE_ML_REWARD_ADDR=0x0000` optionally tracks reward as byte delta at address.
 - `FUSE_ML_DONE_ADDR=0x0000` optionally tracks episode end address.
 - `FUSE_ML_DONE_VALUE=0` optionally sets the done-match value (default `0`).

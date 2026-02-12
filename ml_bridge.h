@@ -15,7 +15,7 @@
 #ifndef FUSE_ML_BRIDGE_H
 #define FUSE_ML_BRIDGE_H
 
-void fuse_ml_configure_from_env( void );
+int fuse_ml_configure_from_env( void );
 int fuse_ml_mode_enabled( void );
 int fuse_ml_visual_mode_enabled( void );
 int fuse_ml_init_socket( void );

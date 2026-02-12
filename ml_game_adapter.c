@@ -21,6 +21,7 @@
 
 #include "input.h"
 #include "memory_pages.h"
+#include "ui/ui.h"
 #include "utils.h"
 
 #include "ml_game_adapter.h"
@@ -114,7 +115,17 @@ fuse_ml_game_parse_action_keys( const char *text )
   return 0;
 }
 
-void
+static void
+fuse_ml_game_set_default_actions( void )
+{
+  fuse_ml_action_keys[0] = INPUT_KEY_NONE;
+  fuse_ml_action_keys[1] = INPUT_KEY_q;
+  fuse_ml_action_keys[2] = INPUT_KEY_w;
+  fuse_ml_action_keys[3] = INPUT_KEY_space;
+  fuse_ml_action_count = 4;
+}
+
+int
 fuse_ml_game_configure_from_env( void )
 {
   const char *game_name = getenv( "FUSE_ML_GAME" );
@@ -135,26 +146,20 @@ fuse_ml_game_configure_from_env( void )
   fuse_ml_reward_last_valid = 0;
   fuse_ml_done_enabled = 0;
 
-  if( !game_name || !*game_name ) return;
-  if( !fuse_ml_game_is_manic_miner( game_name ) ) return;
+  if( !game_name || !*game_name ) return 0;
+  if( !fuse_ml_game_is_manic_miner( game_name ) ) return 0;
 
   fuse_ml_game_name = utils_safe_strdup( "MANIC_MINER" );
   fuse_ml_game_active = 1;
 
-  fuse_ml_action_keys[0] = INPUT_KEY_NONE;
-  fuse_ml_action_keys[1] = INPUT_KEY_6;
-  fuse_ml_action_keys[2] = INPUT_KEY_7;
-  fuse_ml_action_keys[3] = INPUT_KEY_0;
-  fuse_ml_action_count = 4;
-
   if( action_keys && *action_keys ) {
     if( fuse_ml_game_parse_action_keys( action_keys ) ) {
-      fuse_ml_action_keys[0] = INPUT_KEY_NONE;
-      fuse_ml_action_keys[1] = INPUT_KEY_6;
-      fuse_ml_action_keys[2] = INPUT_KEY_7;
-      fuse_ml_action_keys[3] = INPUT_KEY_0;
-      fuse_ml_action_count = 4;
+      ui_error( UI_ERROR_ERROR, "Invalid FUSE_ML_ACTION_KEYS: %s", action_keys );
+      fuse_ml_game_shutdown();
+      return 1;
     }
+  } else {
+    fuse_ml_game_set_default_actions();
   }
 
   if( reward_addr && *reward_addr &&
@@ -176,6 +181,8 @@ fuse_ml_game_configure_from_env( void )
       !fuse_ml_parse_ulong( done_value, &parsed_value ) ) {
     fuse_ml_done_value = parsed_value & 0xff;
   }
+
+  return 0;
 }
 
 void

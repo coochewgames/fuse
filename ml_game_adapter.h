@@ -17,7 +17,7 @@
 
 #include <stdlib.h>
 
-void fuse_ml_game_configure_from_env( void );
+int fuse_ml_game_configure_from_env( void );
 void fuse_ml_game_shutdown( void );
 int fuse_ml_game_enabled( void );
 int fuse_ml_game_get_action_key( unsigned long action, unsigned long *key );

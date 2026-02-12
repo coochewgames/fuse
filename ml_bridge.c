@@ -650,7 +650,7 @@ fuse_ml_shutdown( void )
 
 #endif
 
-void
+int
 fuse_ml_configure_from_env( void )
 {
   const char *mode = getenv( "FUSE_ML_MODE" );
@@ -660,7 +660,7 @@ fuse_ml_configure_from_env( void )
   const char *reset_snapshot = getenv( "FUSE_ML_RESET_SNAPSHOT" );
   unsigned long parsed_pace = 0;
 
-  if( !mode || !*mode || !strcmp( mode, "0" ) ) return;
+  if( !mode || !*mode || !strcmp( mode, "0" ) ) return 0;
 
   fuse_ml_mode = 1;
 
@@ -685,11 +685,13 @@ fuse_ml_configure_from_env( void )
   if( reset_snapshot && *reset_snapshot )
     fuse_ml_reset_snapshot = utils_safe_strdup( reset_snapshot );
 
-  fuse_ml_game_configure_from_env();
+  if( fuse_ml_game_configure_from_env() ) return 1;
 
   settings_current.sound = 0;
   settings_current.sound_load = 0;
   settings_current.gdbserver_enable = 0;
+
+  return 0;
 }
 
 int
