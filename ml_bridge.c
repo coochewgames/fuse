@@ -195,6 +195,68 @@ fuse_ml_read_memory( int fd, unsigned long address, unsigned long length )
   return 0;
 }
 
+static void
+fuse_ml_get_frame_dimensions( int *width, int *height )
+{
+  if( machine_current && machine_current->timex ) {
+    *width = DISPLAY_SCREEN_WIDTH;
+    *height = 2 * DISPLAY_SCREEN_HEIGHT;
+  } else {
+    *width = DISPLAY_ASPECT_WIDTH;
+    *height = DISPLAY_SCREEN_HEIGHT;
+  }
+}
+
+static int
+fuse_ml_send_info( int fd )
+{
+  char response[96];
+  int width, height;
+
+  fuse_ml_get_frame_dimensions( &width, &height );
+
+  snprintf( response, sizeof( response ), "INFO %u %u %d %d\n",
+            (unsigned int)spectrum_frame_count(), (unsigned int)tstates,
+            width, height );
+
+  return fuse_ml_send_text( fd, response );
+}
+
+static int
+fuse_ml_send_screen( int fd )
+{
+  static const char hex[] = "0123456789abcdef";
+  char header[80];
+  char chunk[4096];
+  int width, height;
+  int x, y;
+  size_t used = 0;
+
+  fuse_ml_get_frame_dimensions( &width, &height );
+
+  snprintf( header, sizeof( header ), "SCREEN %d %d IDX8_HEX ",
+            width, height );
+  if( fuse_ml_send_text( fd, header ) ) return 1;
+
+  for( y = 0; y < height; y++ ) {
+    for( x = 0; x < width; x++ ) {
+      int pixel = display_getpixel( x, y ) & 0xff;
+
+      chunk[used++] = hex[ pixel >> 4 ];
+      chunk[used++] = hex[ pixel & 0x0f ];
+
+      if( used >= sizeof( chunk ) - 2 ) {
+        if( fuse_ml_send( fd, chunk, used ) ) return 1;
+        used = 0;
+      }
+    }
+  }
+
+  if( used && fuse_ml_send( fd, chunk, used ) ) return 1;
+
+  return fuse_ml_send_text( fd, "\n" );
+}
+
 static int
 fuse_ml_handle_command( int fd, char *line, int *disconnect )
 {
@@ -240,6 +302,12 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
       return fuse_ml_send_text( fd, "ERR invalid address or length\n" );
 
     return fuse_ml_read_memory( fd, address, length );
+  } else if( !strcmp( command, "GETINFO" ) ) {
+    if( arg1 || arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: GETINFO\n" );
+    return fuse_ml_send_info( fd );
+  } else if( !strcmp( command, "GETSCREEN" ) ) {
+    if( arg1 || arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: GETSCREEN\n" );
+    return fuse_ml_send_screen( fd );
   } else if( !strcmp( command, "QUIT" ) ) {
     fuse_exiting = 1;
     *disconnect = 1;

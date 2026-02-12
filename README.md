@@ -47,12 +47,16 @@ socket for line-based commands:
 - `KEYUP <key>`
 - `STEP <frames>`
 - `READ <address> <length>`
+- `GETINFO`
+- `GETSCREEN`
 - `QUIT`
 
 Responses are text lines:
 
 - `OK ...` for success
 - `DATA <hex bytes>` for memory reads
+- `INFO <frame_count> <tstates> <width> <height>` for emulator state
+- `SCREEN <width> <height> IDX8_HEX <hex bytes>` for palette-index frame data
 - `ERR ...` for failures
 
 ## Notes
