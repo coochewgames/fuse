@@ -31,6 +31,30 @@ Main development platform is the command line on an M-processor using OS X.  The
  - `make`
  - `./fuse`
 
+## ML Bridge (Milestone 1)
+Set environment variables before starting `fuse`:
+
+- `FUSE_ML_MODE=1` enables command-driven ML mode.
+- `FUSE_ML_SOCKET=/tmp/fuse-ml.sock` optionally sets the UNIX socket path.
+- `FUSE_ML_RESET_SNAPSHOT=/path/to/state.szx` optionally sets reset target state.
+
+In ML mode, sound and gdbserver are disabled, and the emulator listens on the
+socket for line-based commands:
+
+- `PING`
+- `RESET`
+- `KEYDOWN <key>`
+- `KEYUP <key>`
+- `STEP <frames>`
+- `READ <address> <length>`
+- `QUIT`
+
+Responses are text lines:
+
+- `OK ...` for success
+- `DATA <hex bytes>` for memory reads
+- `ERR ...` for failures
+
 ## Notes
 With the refactoring, this version will require the dat files with the Z80 instruction sets to be available with the executable.  This will entail that they can be updated directly without the need to rebuild, which aligns with the ability to experiment with the different aspects of the emulator.
 

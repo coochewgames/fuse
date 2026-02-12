@@ -32,6 +32,7 @@ fuse_SOURCES = display.c \
 	keyboard.c \
 	loader.c \
 	logging.c \
+	ml_bridge.c \
 	machine.c \
 	memory_pages.c \
 	mempool.c \
@@ -108,6 +109,7 @@ noinst_HEADERS = bitmap.h \
 	keyboard.h \
 	loader.h \
 	logging.h \
+	ml_bridge.h \
 	machine.h \
 	memory_pages.h \
 	mempool.h \

@@ -80,5 +80,6 @@ extern int spectrum_frame_event;
 
 void spectrum_register_startup( void );
 int spectrum_frame( void );
+libspectrum_dword spectrum_frame_count( void );
 
 #endif			/* #ifndef FUSE_SPECTRUM_H */

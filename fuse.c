@@ -64,6 +64,7 @@
 #include "machines/machines_periph.h"
 #include "memory_pages.h"
 #include "module.h"
+#include "ml_bridge.h"
 #include "movie.h"
 #include "mempool.h"
 #include "peripherals/ay.h"
@@ -198,6 +199,9 @@ int main(int argc, char **argv)
 
   if( settings_current.unittests ) {
     r = unittests_run();
+  } else if( fuse_ml_mode_enabled() ) {
+    r = fuse_ml_loop();
+    if( !r ) r = debugger_get_exit_code();
   } else {
     while( !fuse_exiting ) {
       z80_do_opcodes();
@@ -387,6 +391,8 @@ static int fuse_init(int argc, char **argv)
     return 0;
   }
 
+  fuse_ml_configure_from_env();
+
   start_scaler = utils_safe_strdup( settings_current.start_scaler_mode );
 
   fuse_show_copyright();
@@ -405,6 +411,8 @@ static int fuse_init(int argc, char **argv)
 
 
   gdbserver_init();
+
+  if( fuse_ml_init_socket() ) return 1;
 
   if( ui_mouse_present ) ui_mouse_grabbed = ui_mouse_grab( 1 );
 
@@ -954,6 +962,7 @@ do_start_files( start_files_t *start_files )
 static int fuse_end(void)
 {
   movie_stop();		/* stop movie recording */
+  fuse_ml_shutdown();
 
   startup_manager_run_end();
 
