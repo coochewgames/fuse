@@ -17,6 +17,7 @@
 
 void fuse_ml_configure_from_env( void );
 int fuse_ml_mode_enabled( void );
+int fuse_ml_visual_mode_enabled( void );
 int fuse_ml_init_socket( void );
 int fuse_ml_loop( void );
 void fuse_ml_shutdown( void );

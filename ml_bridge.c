@@ -33,6 +33,7 @@
 #include "settings.h"
 #include "snapshot.h"
 #include "spectrum.h"
+#include "timer/timer.h"
 #include "ui/ui.h"
 #include "utils.h"
 
@@ -41,6 +42,8 @@
 #include "ml_bridge.h"
 
 static int fuse_ml_mode = 0;
+static int fuse_ml_visual_mode = 0;
+static int fuse_ml_visual_pace_ms = 0;
 static char *fuse_ml_socket_path = NULL;
 static char *fuse_ml_reset_snapshot = NULL;
 static int fuse_ml_server_fd = -1;
@@ -156,6 +159,9 @@ fuse_ml_step_frames( unsigned long frame_count )
 
       if( ++watchdog > 20000000 ) return 1;
     }
+
+    if( fuse_ml_visual_mode && fuse_ml_visual_pace_ms > 0 )
+      timer_sleep( fuse_ml_visual_pace_ms );
   }
 
   return 0;
@@ -218,6 +224,18 @@ fuse_ml_send_info( int fd )
   snprintf( response, sizeof( response ), "INFO %u %u %d %d\n",
             (unsigned int)spectrum_frame_count(), (unsigned int)tstates,
             width, height );
+
+  return fuse_ml_send_text( fd, response );
+}
+
+static int
+fuse_ml_send_mode( int fd, const char *prefix )
+{
+  char response[80];
+
+  snprintf( response, sizeof( response ), "%s %s %d\n", prefix,
+            fuse_ml_visual_mode ? "VISUAL" : "HEADLESS",
+            fuse_ml_visual_pace_ms );
 
   return fuse_ml_send_text( fd, response );
 }
@@ -308,6 +326,31 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
   } else if( !strcmp( command, "GETSCREEN" ) ) {
     if( arg1 || arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: GETSCREEN\n" );
     return fuse_ml_send_screen( fd );
+  } else if( !strcmp( command, "MODE" ) ) {
+    if( !arg1 ) return fuse_ml_send_mode( fd, "MODE" );
+
+    if( !strcmp( arg1, "HEADLESS" ) ) {
+      if( arg2 || extra ) return fuse_ml_send_text( fd, "ERR usage: MODE HEADLESS\n" );
+      fuse_ml_visual_mode = 0;
+      fuse_ml_visual_pace_ms = 0;
+      return fuse_ml_send_mode( fd, "OK MODE" );
+    }
+
+    if( !strcmp( arg1, "VISUAL" ) ) {
+      unsigned long pace = 0;
+
+      if( extra ) return fuse_ml_send_text( fd, "ERR usage: MODE VISUAL [pace_ms]\n" );
+      if( arg2 && fuse_ml_parse_ulong( arg2, &pace ) )
+        return fuse_ml_send_text( fd, "ERR invalid pace\n" );
+      if( pace > 10000 )
+        return fuse_ml_send_text( fd, "ERR pace too large\n" );
+
+      fuse_ml_visual_mode = 1;
+      fuse_ml_visual_pace_ms = (int)pace;
+      return fuse_ml_send_mode( fd, "OK MODE" );
+    }
+
+    return fuse_ml_send_text( fd, "ERR mode must be HEADLESS or VISUAL\n" );
   } else if( !strcmp( command, "QUIT" ) ) {
     fuse_exiting = 1;
     *disconnect = 1;
@@ -460,12 +503,27 @@ void
 fuse_ml_configure_from_env( void )
 {
   const char *mode = getenv( "FUSE_ML_MODE" );
+  const char *visual = getenv( "FUSE_ML_VISUAL" );
+  const char *visual_pace = getenv( "FUSE_ML_VISUAL_PACE_MS" );
   const char *socket_path = getenv( "FUSE_ML_SOCKET" );
   const char *reset_snapshot = getenv( "FUSE_ML_RESET_SNAPSHOT" );
+  unsigned long parsed_pace = 0;
 
   if( !mode || !*mode || !strcmp( mode, "0" ) ) return;
 
   fuse_ml_mode = 1;
+
+  if( visual && *visual && strcmp( visual, "0" ) )
+    fuse_ml_visual_mode = 1;
+
+  if( visual_pace && *visual_pace &&
+      !fuse_ml_parse_ulong( visual_pace, &parsed_pace ) &&
+      parsed_pace <= 10000 ) {
+    fuse_ml_visual_pace_ms = (int)parsed_pace;
+  }
+
+  if( !fuse_ml_visual_mode )
+    fuse_ml_visual_pace_ms = 0;
 
   if( socket_path && *socket_path ) {
     fuse_ml_socket_path = utils_safe_strdup( socket_path );
@@ -485,4 +543,10 @@ int
 fuse_ml_mode_enabled( void )
 {
   return fuse_ml_mode;
+}
+
+int
+fuse_ml_visual_mode_enabled( void )
+{
+  return fuse_ml_visual_mode;
 }

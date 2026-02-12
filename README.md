@@ -37,6 +37,8 @@ Set environment variables before starting `fuse`:
 - `FUSE_ML_MODE=1` enables command-driven ML mode.
 - `FUSE_ML_SOCKET=/tmp/fuse-ml.sock` optionally sets the UNIX socket path.
 - `FUSE_ML_RESET_SNAPSHOT=/path/to/state.szx` optionally sets reset target state.
+- `FUSE_ML_VISUAL=1` enables visual rendering in ML mode (default is headless).
+- `FUSE_ML_VISUAL_PACE_MS=16` optionally paces each stepped frame in visual mode.
 
 In ML mode, sound and gdbserver are disabled, and the emulator listens on the
 socket for line-based commands:
@@ -49,6 +51,9 @@ socket for line-based commands:
 - `READ <address> <length>`
 - `GETINFO`
 - `GETSCREEN`
+- `MODE`
+- `MODE HEADLESS`
+- `MODE VISUAL [pace_ms]`
 - `QUIT`
 
 Responses are text lines:
@@ -57,6 +62,7 @@ Responses are text lines:
 - `DATA <hex bytes>` for memory reads
 - `INFO <frame_count> <tstates> <width> <height>` for emulator state
 - `SCREEN <width> <height> IDX8_HEX <hex bytes>` for palette-index frame data
+- `MODE <HEADLESS|VISUAL> <pace_ms>` for current run mode
 - `ERR ...` for failures
 
 ## Notes

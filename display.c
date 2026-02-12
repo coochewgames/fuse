@@ -34,6 +34,7 @@
 #include "fuse.h"
 #include "infrastructure/startup_manager.h"
 #include "machine.h"
+#include "ml_bridge.h"
 #include "movie.h"
 #include "peripherals/scld.h"
 #include "rectangle.h"
@@ -892,6 +893,11 @@ update_ui_screen( void )
   int scale = machine_current->timex ? 2 : 1;
   size_t i;
   struct rectangle *ptr;
+
+  if( fuse_ml_mode_enabled() && !fuse_ml_visual_mode_enabled() ) {
+    rectangle_inactive_count = 0;
+    return;
+  }
 
   if( settings_current.frame_rate <= ++frame_count ) {
     frame_count = 0;
