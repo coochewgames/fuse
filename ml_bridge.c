@@ -319,8 +319,12 @@ static int
 fuse_ml_apply_action( unsigned long action, unsigned long frames,
                       long *reward, int *done, const char **error_text )
 {
-  unsigned long key = 0;
-  int pressed = 0;
+  unsigned long action_keys[ FUSE_ML_GAME_MAX_KEYS_PER_ACTION ];
+  size_t action_key_count = 0;
+  unsigned long pressed_keys[ FUSE_ML_GAME_MAX_KEYS_PER_ACTION ];
+  size_t pressed_count = 0;
+  size_t i;
+  int release_failed = 0;
 
   if( reward ) *reward = 0;
   if( done ) *done = 0;
@@ -331,26 +335,44 @@ fuse_ml_apply_action( unsigned long action, unsigned long frames,
     return 1;
   }
 
-  if( fuse_ml_game_get_action_key( action, &key ) ) {
+  if( fuse_ml_game_get_action_keys( action, action_keys,
+                                    ARRAY_SIZE( action_keys ),
+                                    &action_key_count ) ) {
     if( error_text ) *error_text = "ERR invalid action\n";
     return 1;
   }
 
-  if( key ) {
+  for( i = 0; i < action_key_count; i++ ) {
+    unsigned long key = action_keys[i];
+
+    if( !key ) continue;
+
     if( fuse_ml_key_event( INPUT_EVENT_KEYPRESS, key ) ) {
+      size_t j;
+
+      for( j = pressed_count; j > 0; j-- )
+        fuse_ml_key_event( INPUT_EVENT_KEYRELEASE, pressed_keys[j - 1] );
+
       if( error_text ) *error_text = "ERR key event failed\n";
       return 1;
     }
-    pressed = 1;
+
+    pressed_keys[pressed_count++] = key;
   }
 
   if( fuse_ml_step_frames( frames ) ) {
-    if( pressed ) fuse_ml_key_event( INPUT_EVENT_KEYRELEASE, key );
+    for( i = pressed_count; i > 0; i-- )
+      fuse_ml_key_event( INPUT_EVENT_KEYRELEASE, pressed_keys[i - 1] );
     if( error_text ) *error_text = "ERR step failed\n";
     return 1;
   }
 
-  if( pressed && fuse_ml_key_event( INPUT_EVENT_KEYRELEASE, key ) ) {
+  for( i = pressed_count; i > 0; i-- ) {
+    if( fuse_ml_key_event( INPUT_EVENT_KEYRELEASE, pressed_keys[i - 1] ) )
+      release_failed = 1;
+  }
+
+  if( release_failed ) {
     if( error_text ) *error_text = "ERR key release failed\n";
     return 1;
   }

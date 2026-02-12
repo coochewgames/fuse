@@ -40,7 +40,8 @@ Set environment variables before starting `fuse`:
 - `FUSE_ML_VISUAL=1` enables visual rendering in ML mode (default is headless).
 - `FUSE_ML_VISUAL_PACE_MS=16` optionally paces each stepped frame in visual mode.
 - `FUSE_ML_GAME=MANIC_MINER` enables the Stage 2.3 game adapter.
-- `FUSE_ML_ACTION_KEYS=0,54,55,48` optionally overrides action->key mapping.
+- `FUSE_ML_ACTION_KEYS=0,113,119,32,113+32,119+32` optionally overrides action->key mapping.
+  Actions are comma-separated; multi-key actions use `+` (for example `113+32`).
   Invalid values now cause Fuse ML startup to fail with an error.
 - `FUSE_ML_REWARD_ADDR=0x0000` optionally tracks reward as byte delta at address.
 - `FUSE_ML_DONE_ADDR=0x0000` optionally tracks episode end address.
@@ -81,9 +82,11 @@ Responses are text lines:
 
 For `MANIC_MINER`, the default actions are:
 - `0` no-op
-- `1` key `6` (left)
-- `2` key `7` (right)
-- `3` key `0` (jump)
+- `1` key `q` (left)
+- `2` key `w` (right)
+- `3` key `space` (jump)
+- `4` keys `q+space` (jump-left)
+- `5` keys `w+space` (jump-right)
 
 ## Notes
 With the refactoring, this version will require the dat files with the Z80 instruction sets to be available with the executable.  This will entail that they can be updated directly without the need to rebuild, which aligns with the ability to experiment with the different aspects of the emulator.

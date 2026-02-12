@@ -31,7 +31,9 @@
 static int fuse_ml_game_active = 0;
 static char *fuse_ml_game_name = NULL;
 
-static unsigned long fuse_ml_action_keys[ FUSE_ML_GAME_MAX_ACTIONS ];
+static unsigned long
+  fuse_ml_action_keys[ FUSE_ML_GAME_MAX_ACTIONS ][ FUSE_ML_GAME_MAX_KEYS_PER_ACTION ];
+static size_t fuse_ml_action_key_counts[ FUSE_ML_GAME_MAX_ACTIONS ];
 static unsigned long fuse_ml_action_count = 0;
 
 static int fuse_ml_reward_enabled = 0;
@@ -89,19 +91,34 @@ fuse_ml_game_parse_action_keys( const char *text )
   if( !text || !*text ) return 1;
 
   while( *cursor ) {
-    unsigned long value;
-    char *endptr;
+    size_t key_count = 0;
 
     while( *cursor == ' ' || *cursor == '\t' || *cursor == ',' ) cursor++;
     if( !*cursor ) break;
-
-    errno = 0;
-    value = strtoul( cursor, &endptr, 0 );
-    if( errno || endptr == cursor ) return 1;
     if( count >= FUSE_ML_GAME_MAX_ACTIONS ) return 1;
 
-    fuse_ml_action_keys[count++] = value;
-    cursor = endptr;
+    while( 1 ) {
+      unsigned long value;
+      char *endptr;
+
+      while( *cursor == ' ' || *cursor == '\t' ) cursor++;
+
+      errno = 0;
+      value = strtoul( cursor, &endptr, 0 );
+      if( errno || endptr == cursor ) return 1;
+      if( key_count >= FUSE_ML_GAME_MAX_KEYS_PER_ACTION ) return 1;
+
+      fuse_ml_action_keys[count][key_count++] = value;
+      cursor = endptr;
+
+      while( *cursor == ' ' || *cursor == '\t' ) cursor++;
+      if( *cursor != '+' ) break;
+      cursor++;
+    }
+
+    if( !key_count ) return 1;
+    fuse_ml_action_key_counts[count] = key_count;
+    count++;
 
     while( *cursor == ' ' || *cursor == '\t' ) cursor++;
     if( !*cursor ) break;
@@ -118,11 +135,27 @@ fuse_ml_game_parse_action_keys( const char *text )
 static void
 fuse_ml_game_set_default_actions( void )
 {
-  fuse_ml_action_keys[0] = INPUT_KEY_NONE;
-  fuse_ml_action_keys[1] = INPUT_KEY_q;
-  fuse_ml_action_keys[2] = INPUT_KEY_w;
-  fuse_ml_action_keys[3] = INPUT_KEY_space;
-  fuse_ml_action_count = 4;
+  fuse_ml_action_keys[0][0] = INPUT_KEY_NONE;
+  fuse_ml_action_key_counts[0] = 1;
+
+  fuse_ml_action_keys[1][0] = INPUT_KEY_q;
+  fuse_ml_action_key_counts[1] = 1;
+
+  fuse_ml_action_keys[2][0] = INPUT_KEY_w;
+  fuse_ml_action_key_counts[2] = 1;
+
+  fuse_ml_action_keys[3][0] = INPUT_KEY_space;
+  fuse_ml_action_key_counts[3] = 1;
+
+  fuse_ml_action_keys[4][0] = INPUT_KEY_q;
+  fuse_ml_action_keys[4][1] = INPUT_KEY_space;
+  fuse_ml_action_key_counts[4] = 2;
+
+  fuse_ml_action_keys[5][0] = INPUT_KEY_w;
+  fuse_ml_action_keys[5][1] = INPUT_KEY_space;
+  fuse_ml_action_key_counts[5] = 2;
+
+  fuse_ml_action_count = 6;
 }
 
 int
@@ -142,6 +175,7 @@ fuse_ml_game_configure_from_env( void )
 
   fuse_ml_game_active = 0;
   fuse_ml_action_count = 0;
+  memset( fuse_ml_action_key_counts, 0, sizeof( fuse_ml_action_key_counts ) );
   fuse_ml_reward_enabled = 0;
   fuse_ml_reward_last_valid = 0;
   fuse_ml_done_enabled = 0;
@@ -195,6 +229,7 @@ fuse_ml_game_shutdown( void )
 
   fuse_ml_game_active = 0;
   fuse_ml_action_count = 0;
+  memset( fuse_ml_action_key_counts, 0, sizeof( fuse_ml_action_key_counts ) );
   fuse_ml_reward_enabled = 0;
   fuse_ml_done_enabled = 0;
   fuse_ml_reward_last_valid = 0;
@@ -207,13 +242,20 @@ fuse_ml_game_enabled( void )
 }
 
 int
-fuse_ml_game_get_action_key( unsigned long action, unsigned long *key )
+fuse_ml_game_get_action_keys( unsigned long action, unsigned long *keys,
+                              size_t max_keys, size_t *key_count )
 {
+  size_t count;
+
   if( !fuse_ml_game_active ) return 1;
   if( action >= fuse_ml_action_count ) return 1;
-  if( !key ) return 1;
+  if( !keys || !key_count ) return 1;
 
-  *key = fuse_ml_action_keys[action];
+  count = fuse_ml_action_key_counts[action];
+  if( !count || count > max_keys ) return 1;
+
+  memcpy( keys, fuse_ml_action_keys[action], count * sizeof( keys[0] ) );
+  *key_count = count;
   return 0;
 }
 
