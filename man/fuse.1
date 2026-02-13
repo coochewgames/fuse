@@ -3530,8 +3530,9 @@ section for more information.
 .I "Machine, Memory Browser..."
 .RS
 Start the memory browser. It should be fairly obvious what this does;
-perhaps the only thing worth noting is that emulation is paused until
-you close the window.
+memory is refreshed while the window is open and emulation continues
+running. Under GTK and Win32, the memory browser is modeless, so you
+can continue using the main window menus while it is open.
 .RE
 .PP
 .I "Machine, NMI"
@@ -4291,7 +4292,7 @@ To emulate different kinds of Spectrum, select the
 menu option, or press
 .IR F9 .
 .PP
-The Spectrum emulation is paused when any dialogs appear. In the
+The Spectrum emulation is paused when most dialogs appear. In the
 widget UI, it's also paused when menus or the keyboard picture are
 displayed.
 .\"

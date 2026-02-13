@@ -30,6 +30,7 @@
 
 emulation_speed, numeric, 100,, speed
 frame_rate, numeric, 1,, rate
+memory_browser_refresh_ms, numeric, 100,, memory-browser-refresh
 
 issue2, boolean, 0
 joy_prompt, boolean, 0,, joystick-prompt

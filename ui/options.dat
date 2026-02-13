@@ -2,6 +2,7 @@ general
 General Options
 Entry, (E)mulation speed, emulation_speed, INPUT_KEY_e, 5, %
 Entry, F(r)ame rate (1:n), frame_rate, INPUT_KEY_r, 1, frames
+Entry, Memory browser refresh (m)s, memory_browser_refresh_ms, INPUT_KEY_m, 4, ms
 Checkbox, Issue (2) keyboard, issue2, INPUT_KEY_2
 Checkbox, Recrea(t)ed ZX Spectrum, recreated_spectrum, INPUT_KEY_t
 Checkbox, Use shift with (a)rrow keys, keyboard_arrows_shifted, INPUT_KEY_a

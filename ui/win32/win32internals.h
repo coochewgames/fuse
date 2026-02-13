@@ -60,6 +60,9 @@ extern HWND fuse_hDBGWnd;
 /* about window handle */
 extern HWND fuse_hABOWnd;
 
+/* memory browser window handle */
+extern HWND fuse_hMEMWnd;
+
 /*
  * Display routines (win32display.c)
  */

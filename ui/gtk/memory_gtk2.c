@@ -36,8 +36,18 @@
 #include "gtkinternals.h"
 #include "memory_pages.h"
 #include "menu.h"
+#include "settings.h"
+
+#define MEMORY_BROWSER_REFRESH_MIN_MS 10
+#define MEMORY_BROWSER_REFRESH_MAX_MS 5000
 
 static libspectrum_word memaddr = 0x0000;
+static GtkAdjustment *memory_adjustment = NULL;
+static GtkTreeModel *memory_model = NULL;
+static guint refresh_source_id = 0;
+static guint refresh_interval_ms = 0;
+static GtkWidget *memorybrowser_dialog = NULL;
+static PangoFontDescription *memorybrowser_font = NULL;
 
 /* List columns */
 enum
@@ -47,6 +57,14 @@ enum
   COL_DATA,
   NUM_COLS
 };
+
+static gboolean
+memorybrowser_delete( GtkWidget *widget, GdkEvent *event GCC_UNUSED,
+                      gpointer user_data GCC_UNUSED )
+{
+  gtk_widget_destroy( widget );
+  return TRUE;
+}
 
 static void
 update_display( GtkTreeModel *model, libspectrum_word base )
@@ -98,6 +116,62 @@ scroller( GtkAdjustment *adjustment, gpointer user_data )
   base &= 0xfff0;
 
   update_display( model, base );
+}
+
+static guint
+memorybrowser_refresh_interval_ms( void )
+{
+  int interval = settings_current.memory_browser_refresh_ms;
+
+  if( interval < MEMORY_BROWSER_REFRESH_MIN_MS )
+    return MEMORY_BROWSER_REFRESH_MIN_MS;
+
+  if( interval > MEMORY_BROWSER_REFRESH_MAX_MS )
+    return MEMORY_BROWSER_REFRESH_MAX_MS;
+
+  return interval;
+}
+
+static gboolean
+memorybrowser_refresh( gpointer user_data GCC_UNUSED )
+{
+  libspectrum_word base;
+  guint interval;
+
+  if( !memory_adjustment || !memory_model ) return FALSE;
+
+  interval = memorybrowser_refresh_interval_ms();
+  if( refresh_interval_ms != interval ) {
+    refresh_interval_ms = interval;
+    refresh_source_id = g_timeout_add( refresh_interval_ms,
+                                       memorybrowser_refresh, NULL );
+    return FALSE;
+  }
+
+  base = gtk_adjustment_get_value( memory_adjustment );
+  base &= 0xfff0;
+  update_display( memory_model, base );
+
+  return TRUE;
+}
+
+static void
+memorybrowser_destroy( GtkWidget *widget GCC_UNUSED, gpointer user_data GCC_UNUSED )
+{
+  if( refresh_source_id ) {
+    g_source_remove( refresh_source_id );
+    refresh_source_id = 0;
+  }
+
+  if( memorybrowser_font ) {
+    gtkui_free_font( memorybrowser_font );
+    memorybrowser_font = NULL;
+  }
+
+  refresh_interval_ms = 0;
+  memory_adjustment = NULL;
+  memory_model = NULL;
+  memorybrowser_dialog = NULL;
 }
 
 static GtkWidget *
@@ -154,15 +228,26 @@ menu_machine_memorybrowser( GtkAction *gtk_action GCC_UNUSED,
   GtkAdjustment *adjustment;
   GtkTreeModel *model;
   int error;
-  PangoFontDescription *font;
 
-  fuse_emulation_pause();
+  if( memorybrowser_dialog ) {
+    libspectrum_word base =
+      (libspectrum_word)gtk_adjustment_get_value( memory_adjustment );
+    base &= 0xfff0;
+    update_display( memory_model, base );
+    gtk_window_present( GTK_WINDOW( memorybrowser_dialog ) );
+    return;
+  }
 
-  error = gtkui_get_monospaced_font( &font ); if( error ) return;
+  error = gtkui_get_monospaced_font( &memorybrowser_font ); if( error ) return;
 
-  dialog = gtkstock_dialog_new( "Fuse - Memory Browser", NULL );
+  dialog = gtkstock_dialog_new( "Fuse - Memory Browser",
+                                G_CALLBACK( memorybrowser_delete ) );
+  memorybrowser_dialog = dialog;
+  g_signal_connect( dialog, "destroy", G_CALLBACK( memorybrowser_destroy ),
+                    NULL );
 
-  gtkstock_create_close( dialog, NULL, NULL, FALSE );
+  gtkstock_create_close( dialog, NULL, G_CALLBACK( gtk_widget_destroy ),
+                         FALSE );
 
   box = gtk_box_new( GTK_ORIENTATION_HORIZONTAL, 0 );
   content_area = gtk_dialog_get_content_area( GTK_DIALOG( dialog ) );
@@ -170,7 +255,7 @@ menu_machine_memorybrowser( GtkAction *gtk_action GCC_UNUSED,
 
   /* The list itself */
   list = create_mem_list();
-  gtk_widget_override_font( list, font );
+  gtk_widget_override_font( list, memorybrowser_font );
   model = gtk_tree_view_get_model( GTK_TREE_VIEW( list ) );
   update_display( GTK_TREE_MODEL( model ), memaddr );
   gtk_box_pack_start( GTK_BOX( box ), list, TRUE, TRUE, 0 );
@@ -185,11 +270,13 @@ menu_machine_memorybrowser( GtkAction *gtk_action GCC_UNUSED,
   scrollbar = gtk_scrollbar_new( GTK_ORIENTATION_VERTICAL, adjustment );
   gtk_box_pack_start( GTK_BOX( box ), scrollbar, FALSE, FALSE, 0 );
 
-  gtk_widget_show_all( dialog );
-  gtk_main();
+  memory_adjustment = adjustment;
+  memory_model = model;
+  refresh_interval_ms = memorybrowser_refresh_interval_ms();
+  refresh_source_id =
+    g_timeout_add( refresh_interval_ms, memorybrowser_refresh, NULL );
 
-  gtkui_free_font( font );
-  fuse_emulation_unpause();
+  gtk_widget_show_all( dialog );
 
   return;
 }

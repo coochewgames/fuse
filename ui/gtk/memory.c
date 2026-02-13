@@ -38,10 +38,13 @@
 #include "gtkinternals.h"
 #include "memory_pages.h"
 #include "menu.h"
+#include "settings.h"
 #include "ui/ui.h"
 
 #define VIEW_NUM_ROWS 20
 #define VIEW_NUM_COLS 16
+#define MEMORY_BROWSER_REFRESH_MIN_MS 10
+#define MEMORY_BROWSER_REFRESH_MAX_MS 5000
 
 static libspectrum_word memaddr = 0x0000;
 
@@ -52,6 +55,22 @@ static GtkTextBuffer *cursor_buffer;
 
 static GtkTextBuffer *buffer_address, *buffer_hex, *buffer_data;
 static GtkAdjustment *adjustment;
+static guint refresh_source_id = 0;
+static guint refresh_interval_ms = 0;
+static GtkWidget *memorybrowser_dialog = NULL;
+
+typedef struct {
+  gint line;
+  gint line_offset;
+} cursor_position;
+
+static gboolean
+memorybrowser_delete( GtkWidget *widget, GdkEvent *event GCC_UNUSED,
+                      gpointer user_data GCC_UNUSED )
+{
+  gtk_widget_destroy( widget );
+  return TRUE;
+}
 
 static gboolean
 textview_wheel_scroll_event( GtkWidget *widget, GdkEvent *event, gpointer user_data )
@@ -223,6 +242,54 @@ textview_key_press_event( GtkWidget *widget, GdkEventKey *event, gpointer user_d
   return FALSE;
 }
 
+static guint
+memorybrowser_refresh_interval_ms( void )
+{
+  int interval = settings_current.memory_browser_refresh_ms;
+
+  if( interval < MEMORY_BROWSER_REFRESH_MIN_MS )
+    return MEMORY_BROWSER_REFRESH_MIN_MS;
+
+  if( interval > MEMORY_BROWSER_REFRESH_MAX_MS )
+    return MEMORY_BROWSER_REFRESH_MAX_MS;
+
+  return interval;
+}
+
+static void
+save_cursor_position( GtkTextBuffer *buffer, cursor_position *pos )
+{
+  GtkTextIter iter;
+  GtkTextMark *mark;
+
+  mark = gtk_text_buffer_get_insert( buffer );
+  gtk_text_buffer_get_iter_at_mark( buffer, &iter, mark );
+  pos->line = gtk_text_iter_get_line( &iter );
+  pos->line_offset = gtk_text_iter_get_line_offset( &iter );
+}
+
+static void
+restore_cursor_position( GtkTextBuffer *buffer, const cursor_position *pos )
+{
+  GtkTextIter iter;
+  gint line, line_offset, max_offset;
+
+  line = pos->line;
+  line_offset = pos->line_offset;
+
+  if( line < 0 ) line = 0;
+  if( line >= VIEW_NUM_ROWS ) line = VIEW_NUM_ROWS - 1;
+
+  gtk_text_buffer_get_iter_at_line( buffer, &iter, line );
+  max_offset = gtk_text_iter_get_chars_in_line( &iter );
+
+  if( line_offset < 0 ) line_offset = 0;
+  if( line_offset > max_offset ) line_offset = max_offset;
+
+  gtk_text_buffer_get_iter_at_line_offset( buffer, &iter, line, line_offset );
+  gtk_text_buffer_place_cursor( buffer, &iter );
+}
+
 static void
 update_display( libspectrum_word base )
 {
@@ -230,8 +297,13 @@ update_display( libspectrum_word base )
   char buffer2[ 8 ];
   char buffer3;
   GtkTextIter iter_address, iter_hex, iter_data, start, end;
+  cursor_position cursor_address, cursor_hex, cursor_data;
 
   memaddr = base;
+
+  save_cursor_position( buffer_address, &cursor_address );
+  save_cursor_position( buffer_hex, &cursor_hex );
+  save_cursor_position( buffer_data, &cursor_data );
 
   gtk_text_buffer_get_bounds( buffer_address, &start, &end );
   gtk_text_buffer_delete( buffer_address, &start, &end );
@@ -281,6 +353,10 @@ update_display( libspectrum_word base )
   gtk_text_buffer_apply_tag_by_name( buffer_hex, "monospace", &start, &end );
   gtk_text_buffer_get_bounds( buffer_data, &start, &end );
   gtk_text_buffer_apply_tag_by_name( buffer_data, "monospace", &start, &end );
+
+  restore_cursor_position( buffer_address, &cursor_address );
+  restore_cursor_position( buffer_hex, &cursor_hex );
+  restore_cursor_position( buffer_data, &cursor_data );
 }
 
 static void
@@ -293,6 +369,42 @@ scroller( GtkAdjustment *adjustment, gpointer user_data )
   base &= 0xfff0;
 
   update_display( base );
+}
+
+static gboolean
+memorybrowser_refresh( gpointer user_data GCC_UNUSED )
+{
+  libspectrum_word base;
+  guint interval;
+
+  if( !adjustment ) return FALSE;
+
+  interval = memorybrowser_refresh_interval_ms();
+  if( refresh_interval_ms != interval ) {
+    refresh_interval_ms = interval;
+    refresh_source_id = g_timeout_add( refresh_interval_ms,
+                                       memorybrowser_refresh, NULL );
+    return FALSE;
+  }
+
+  base = gtk_adjustment_get_value( adjustment );
+  base &= 0xfff0;
+  update_display( base );
+
+  return TRUE;
+}
+
+static void
+memorybrowser_destroy( GtkWidget *widget GCC_UNUSED, gpointer user_data GCC_UNUSED )
+{
+  if( refresh_source_id ) {
+    g_source_remove( refresh_source_id );
+    refresh_source_id = 0;
+  }
+
+  refresh_interval_ms = 0;
+  adjustment = NULL;
+  memorybrowser_dialog = NULL;
 }
 
 #if GTK_CHECK_VERSION( 3, 6, 0 )
@@ -335,16 +447,28 @@ menu_machine_memorybrowser( GtkAction *gtk_action GCC_UNUSED,
   GtkTextTagTable *tag_table;
   GtkTextTag *tag;
 
-  fuse_emulation_pause();
+  if( memorybrowser_dialog ) {
+    libspectrum_word base = (libspectrum_word)gtk_adjustment_get_value(
+                              adjustment );
+    base &= 0xfff0;
+    update_display( base );
+    gtk_window_present( GTK_WINDOW( memorybrowser_dialog ) );
+    return;
+  }
 
-  dialog = gtkstock_dialog_new( "Fuse - Memory Browser", NULL );
+  dialog = gtkstock_dialog_new( "Fuse - Memory Browser",
+                                G_CALLBACK( memorybrowser_delete ) );
+  memorybrowser_dialog = dialog;
   content_area = gtk_dialog_get_content_area( GTK_DIALOG( dialog ) );
+  g_signal_connect( dialog, "destroy", G_CALLBACK( memorybrowser_destroy ),
+                    NULL );
 
   /* Keyboard shortcuts */
   accel_group = gtk_accel_group_new();
   gtk_window_add_accel_group( GTK_WINDOW( dialog ), accel_group );
 
-  gtkstock_create_close( dialog, accel_group, NULL, TRUE );
+  gtkstock_create_close( dialog, accel_group, G_CALLBACK( gtk_widget_destroy ),
+                         TRUE );
 
 #if GTK_CHECK_VERSION( 3, 6, 0 )
   /* Go to offset */
@@ -451,10 +575,11 @@ menu_machine_memorybrowser( GtkAction *gtk_action GCC_UNUSED,
 
   update_display( memaddr );
 
-  gtk_widget_show_all( dialog );
-  gtk_main();
+  refresh_interval_ms = memorybrowser_refresh_interval_ms();
+  refresh_source_id =
+    g_timeout_add( refresh_interval_ms, memorybrowser_refresh, NULL );
 
-  fuse_emulation_unpause();
+  gtk_widget_show_all( dialog );
 
   return;
 }

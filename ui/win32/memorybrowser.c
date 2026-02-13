@@ -30,6 +30,7 @@
 #include "compat.h"
 #include "fuse.h"
 #include "memory_pages.h"
+#include "settings.h"
 #include "win32internals.h"
 
 #include "memorybrowser.h"
@@ -46,10 +47,16 @@ memorybrowser_init( HWND hwndDlg );
 void
 menu_machine_memorybrowser( int action );
 
+/* Memory browser window handle */
+HWND fuse_hMEMWnd;
+
 /* helper constants for memory listview's scrollbar */
 static const int memorysb_min = 0x0000;
 static const int memorysb_max = 0x10000;
 static const int memorysb_step = 0x10;
+#define MEMORYBROWSER_TIMER_ID 1
+#define MEMORYBROWSER_REFRESH_MIN_MS 10
+#define MEMORYBROWSER_REFRESH_MAX_MS 5000
 
 /* Visual styles could change visible rows */
 static int memorysb_page_inc = 0xa0;
@@ -58,11 +65,28 @@ static int memorysb_page_rows = 20;
 
 /* Address of first visible row */
 static libspectrum_word memaddr = 0x0000;
+static UINT refresh_interval_ms = 0;
+
+static UINT
+memorybrowser_refresh_interval_ms( void )
+{
+  int interval = settings_current.memory_browser_refresh_ms;
+
+  if( interval < MEMORYBROWSER_REFRESH_MIN_MS )
+    return MEMORYBROWSER_REFRESH_MIN_MS;
+
+  if( interval > MEMORYBROWSER_REFRESH_MAX_MS )
+    return MEMORYBROWSER_REFRESH_MAX_MS;
+
+  return interval;
+}
 
 static void
 update_display( HWND hwndDlg, libspectrum_word base )
 {
   int i, j;
+  int selected;
+  HWND hwnd_list;
 
   TCHAR buffer[ 8 + 64 + 20 ];
   TCHAR *text[] = { &buffer[0], &buffer[ 8 ], &buffer[ 8 + 64 ] };
@@ -70,7 +94,10 @@ update_display( HWND hwndDlg, libspectrum_word base )
 
   memaddr = base;
 
-  SendDlgItemMessage( hwndDlg, IDC_MEM_LV, LVM_DELETEALLITEMS, 0, 0 );
+  hwnd_list = GetDlgItem( hwndDlg, IDC_MEM_LV );
+  selected = ListView_GetNextItem( hwnd_list, -1, LVNI_SELECTED );
+
+  SendMessage( hwnd_list, LVM_DELETEALLITEMS, 0, 0 );
 
   LV_ITEM lvi;
   lvi.mask = LVIF_TEXT;
@@ -91,20 +118,20 @@ update_display( HWND hwndDlg, libspectrum_word base )
     text[2][ 0x10 ] = '\0';
 
     /* append the item */
-    lvi.iItem = SendDlgItemMessage( hwndDlg, IDC_MEM_LV,
-                                    LVM_GETITEMCOUNT, 0, 0 );
+    lvi.iItem = SendMessage( hwnd_list, LVM_GETITEMCOUNT, 0, 0 );
     lvi.iSubItem = 0;
     lvi.pszText = text[0];
-    SendDlgItemMessage( hwndDlg, IDC_MEM_LV, LVM_INSERTITEM, 0,
-                        ( LPARAM ) &lvi );
+    SendMessage( hwnd_list, LVM_INSERTITEM, 0, ( LPARAM ) &lvi );
     lvi.iSubItem = 1;
     lvi.pszText = text[1];
-    SendDlgItemMessage( hwndDlg, IDC_MEM_LV, LVM_SETITEM, 0,
-                        ( LPARAM ) &lvi );
+    SendMessage( hwnd_list, LVM_SETITEM, 0, ( LPARAM ) &lvi );
     lvi.iSubItem = 2;
     lvi.pszText = text[2];
-    SendDlgItemMessage( hwndDlg, IDC_MEM_LV, LVM_SETITEM, 0,
-                        ( LPARAM ) &lvi );
+    SendMessage( hwnd_list, LVM_SETITEM, 0, ( LPARAM ) &lvi );
+  }
+
+  if( selected >= 0 && selected < memorysb_page_rows ) {
+    ListView_SetItemState( hwnd_list, selected, LVIS_SELECTED, LVIS_SELECTED );
   }
 }
 
@@ -181,12 +208,19 @@ scroller( HWND hwndDlg, WPARAM scroll_command )
 void
 menu_machine_memorybrowser( int action GCC_UNUSED )
 {
-  fuse_emulation_pause();
+  if( !IsWindow( fuse_hMEMWnd ) ) {
+    fuse_hMEMWnd = CreateDialog( fuse_hInstance, MAKEINTRESOURCE( IDD_MEM ),
+                                 fuse_hWnd, (DLGPROC) memorybrowser_proc );
+    if( !fuse_hMEMWnd ) {
+      win32_verror( 1 );
+      return;
+    }
+  }
 
-  DialogBox( fuse_hInstance, MAKEINTRESOURCE( IDD_MEM ),
-             fuse_hWnd, (DLGPROC) memorybrowser_proc );
+  update_display( fuse_hMEMWnd, memaddr );
+  ShowWindow( fuse_hMEMWnd, SW_SHOW );
+  SetActiveWindow( fuse_hMEMWnd );
 
-  fuse_emulation_unpause();
   return;
 }
 
@@ -198,20 +232,42 @@ memorybrowser_proc( HWND hwndDlg, UINT uMsg, WPARAM wParam,
   {
     case WM_INITDIALOG:
       memorybrowser_init( hwndDlg );
+      refresh_interval_ms = memorybrowser_refresh_interval_ms();
+      SetTimer( hwndDlg, MEMORYBROWSER_TIMER_ID, refresh_interval_ms, NULL );
       return TRUE;
 
     case WM_COMMAND:
       if( LOWORD( wParam ) == IDCLOSE ||
           LOWORD( wParam ) == IDCANCEL ) {
-        EndDialog( hwndDlg, 0 );
+        DestroyWindow( hwndDlg );
         return TRUE;
       }
       break;
 
     case WM_CLOSE: {
-      EndDialog( hwndDlg, 0 );
+      DestroyWindow( hwndDlg );
       return TRUE;
     }
+
+    case WM_TIMER:
+      if( wParam == MEMORYBROWSER_TIMER_ID ) {
+        UINT interval = memorybrowser_refresh_interval_ms();
+        if( refresh_interval_ms != interval ) {
+          refresh_interval_ms = interval;
+          SetTimer( hwndDlg, MEMORYBROWSER_TIMER_ID, refresh_interval_ms,
+                    NULL );
+        }
+
+        update_display( hwndDlg, memaddr );
+        return TRUE;
+      }
+      break;
+
+    case WM_DESTROY:
+      KillTimer( hwndDlg, MEMORYBROWSER_TIMER_ID );
+      refresh_interval_ms = 0;
+      fuse_hMEMWnd = NULL;
+      return TRUE;
 
     case WM_VSCROLL:
       /* Accept vertical scroll from listview too */
