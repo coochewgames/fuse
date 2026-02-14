@@ -58,6 +58,8 @@ static GtkAdjustment *adjustment;
 static guint refresh_source_id = 0;
 static guint refresh_interval_ms = 0;
 static GtkWidget *memorybrowser_dialog = NULL;
+static const char *hex_column_heading_text =
+  "0x0 0x1 0x2 0x3 0x4 0x5 0x6 0x7 0x8 0x9 0xA 0xB 0xC 0xD 0xE 0xF";
 
 typedef struct {
   gint line;
@@ -327,9 +329,6 @@ update_display( libspectrum_word base )
     gtk_text_buffer_insert( buffer_address, &iter_address, buffer2, -1 );
 
     for( j = 0; j < VIEW_NUM_COLS; j++, base++ ) {
-      if( j > 0 )
-        gtk_text_buffer_insert( buffer_hex, &iter_hex, " ", -1 );
-
       libspectrum_byte b = readbyte_internal( base );
       snprintf( buffer2, 4, "%02X", b );
 
@@ -344,6 +343,9 @@ update_display( libspectrum_word base )
         gtk_text_buffer_insert_with_tags_by_name( buffer_data, &iter_data,
           &buffer3, 1, "background_yellow", NULL );
       }
+
+      if( j + 1 < VIEW_NUM_COLS )
+        gtk_text_buffer_insert( buffer_hex, &iter_hex, "  ", -1 );
     }
   }
 
@@ -407,6 +409,40 @@ memorybrowser_destroy( GtkWidget *widget GCC_UNUSED, gpointer user_data GCC_UNUS
   memorybrowser_dialog = NULL;
 }
 
+static GtkWidget *
+create_hex_heading_label( void )
+{
+  GtkWidget *label;
+  gchar *markup;
+
+  label = gtk_label_new( NULL );
+  gtk_label_set_xalign( GTK_LABEL( label ), 0.0f );
+  markup = g_strdup_printf(
+    "<span foreground=\"#808080\" font_family=\"monospace\">%s</span>",
+    hex_column_heading_text
+  );
+  gtk_label_set_markup( GTK_LABEL( label ), markup );
+  g_free( markup );
+  gtk_widget_set_halign( label, GTK_ALIGN_START );
+  gtk_widget_set_margin_start( label, 1 );
+  gtk_widget_set_margin_end( label, 1 );
+
+  return label;
+}
+
+static GtkWidget *
+create_column_spacer_label( void )
+{
+  GtkWidget *label;
+
+  label = gtk_label_new( " " );
+  gtk_widget_set_halign( label, GTK_ALIGN_START );
+  gtk_widget_set_margin_start( label, 1 );
+  gtk_widget_set_margin_end( label, 1 );
+
+  return label;
+}
+
 #if GTK_CHECK_VERSION( 3, 6, 0 )
 static void
 goto_offset( GtkWidget *widget GCC_UNUSED, gpointer user_data GCC_UNUSED )
@@ -442,6 +478,9 @@ menu_machine_memorybrowser( GtkAction *gtk_action GCC_UNUSED,
 {
   GtkWidget *dialog, *content_area, *scrollbar, *label, *offset;
   GtkWidget *box, *box_address, *box_hex, *box_data, *box_data_horizontal;
+  GtkWidget *hex_heading_top, *hex_heading_bottom;
+  GtkWidget *address_spacer_top, *address_spacer_bottom;
+  GtkWidget *data_spacer_top, *data_spacer_bottom;
   GtkAccelGroup *accel_group;
   GtkWidget *view_address, *view_hex, *view_data;
   GtkTextTagTable *tag_table;
@@ -519,10 +558,16 @@ menu_machine_memorybrowser( GtkAction *gtk_action GCC_UNUSED,
 
   label = gtk_label_new( "Address" );
   gtk_box_pack_start( GTK_BOX( box_address ), label, FALSE, FALSE, 0 );
+  address_spacer_top = create_column_spacer_label();
+  gtk_box_pack_start( GTK_BOX( box_address ), address_spacer_top, FALSE, FALSE, 0 );
   label = gtk_label_new( "Hex" );
   gtk_box_pack_start( GTK_BOX( box_hex ), label, FALSE, FALSE, 0 );
+  hex_heading_top = create_hex_heading_label();
+  gtk_box_pack_start( GTK_BOX( box_hex ), hex_heading_top, FALSE, FALSE, 0 );
   label = gtk_label_new( "Data" );
   gtk_box_pack_start( GTK_BOX( box_data ), label, FALSE, FALSE, 0 );
+  data_spacer_top = create_column_spacer_label();
+  gtk_box_pack_start( GTK_BOX( box_data ), data_spacer_top, FALSE, FALSE, 0 );
 
   /* Add views */
   view_address = gtk_text_view_new_with_buffer( buffer_address );
@@ -545,10 +590,16 @@ menu_machine_memorybrowser( GtkAction *gtk_action GCC_UNUSED,
 #endif
 
   gtk_box_pack_start( GTK_BOX( box_address ), view_address, FALSE, FALSE, 0 );
+  address_spacer_bottom = create_column_spacer_label();
+  gtk_box_pack_start( GTK_BOX( box_address ), address_spacer_bottom, FALSE, FALSE, 0 );
   gtk_box_pack_start( GTK_BOX( box_hex ), view_hex, FALSE, FALSE, 0 );
+  hex_heading_bottom = create_hex_heading_label();
+  gtk_box_pack_start( GTK_BOX( box_hex ), hex_heading_bottom, FALSE, FALSE, 0 );
   box_data_horizontal = gtk_box_new( GTK_ORIENTATION_HORIZONTAL, 0 );
   gtk_box_pack_start( GTK_BOX( box_data ), box_data_horizontal, FALSE, FALSE, 0 );
   gtk_box_pack_start( GTK_BOX( box_data_horizontal ), view_data, FALSE, FALSE, 0 );
+  data_spacer_bottom = create_column_spacer_label();
+  gtk_box_pack_start( GTK_BOX( box_data ), data_spacer_bottom, FALSE, FALSE, 0 );
 
   /* Scroll */
   adjustment = GTK_ADJUSTMENT(
