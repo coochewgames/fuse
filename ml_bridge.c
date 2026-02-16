@@ -316,11 +316,114 @@ fuse_ml_parse_bool( const char *text, int *value )
 }
 
 static int
-fuse_ml_apply_action( unsigned long action, unsigned long frames,
-                      long *reward, int *done, const char **error_text )
+fuse_ml_parse_key_name( const char *text, unsigned long *key )
 {
-  unsigned long action_keys[ FUSE_ML_GAME_MAX_KEYS_PER_ACTION ];
-  size_t action_key_count = 0;
+  size_t length;
+
+  if( !text || !*text || !key ) return 1;
+
+  if( !strcmp( text, "-" ) || !strcmp( text, "0" ) || !strcmp( text, "none" ) ) {
+    *key = INPUT_KEY_NONE;
+    return 0;
+  }
+
+  if( !strcmp( text, "space" ) ) {
+    *key = INPUT_KEY_space;
+    return 0;
+  }
+
+  if( !strcmp( text, "enter" ) || !strcmp( text, "return" ) ) {
+    *key = INPUT_KEY_Return;
+    return 0;
+  }
+
+  if( !strcmp( text, "left" ) ) {
+    *key = INPUT_KEY_Left;
+    return 0;
+  }
+
+  if( !strcmp( text, "right" ) ) {
+    *key = INPUT_KEY_Right;
+    return 0;
+  }
+
+  if( !strcmp( text, "up" ) ) {
+    *key = INPUT_KEY_Up;
+    return 0;
+  }
+
+  if( !strcmp( text, "down" ) ) {
+    *key = INPUT_KEY_Down;
+    return 0;
+  }
+
+  if( !strcmp( text, "caps" ) ) {
+    *key = INPUT_KEY_Shift_L;
+    return 0;
+  }
+
+  if( !strcmp( text, "symbol" ) ) {
+    *key = INPUT_KEY_Control_R;
+    return 0;
+  }
+
+  length = strlen( text );
+  if( length == 1 ) {
+    *key = (unsigned long)(unsigned char)text[0];
+    return 0;
+  }
+
+  return 1;
+}
+
+static int
+fuse_ml_parse_key_chord( const char *text, unsigned long *keys,
+                         size_t max_keys, size_t *key_count )
+{
+  const char *cursor;
+  size_t count = 0;
+
+  if( !text || !keys || !key_count ) return 1;
+
+  if( !*text || !strcmp( text, "-" ) || !strcmp( text, "0" ) ||
+      !strcmp( text, "none" ) ) {
+    *key_count = 0;
+    return 0;
+  }
+
+  cursor = text;
+
+  while( *cursor ) {
+    const char *sep = strchr( cursor, '+' );
+    size_t token_length = sep ? (size_t)( sep - cursor ) : strlen( cursor );
+    char token[32];
+    unsigned long key = INPUT_KEY_NONE;
+
+    if( !token_length || token_length >= sizeof( token ) ) return 1;
+
+    memcpy( token, cursor, token_length );
+    token[token_length] = '\0';
+
+    if( fuse_ml_parse_key_name( token, &key ) ) return 1;
+
+    if( key != INPUT_KEY_NONE ) {
+      if( count >= max_keys ) return 1;
+      keys[count++] = key;
+    }
+
+    if( !sep ) break;
+    cursor = sep + 1;
+  }
+
+  *key_count = count;
+  return 0;
+}
+
+static int
+fuse_ml_apply_keys( const unsigned long *action_keys, size_t action_key_count,
+                    unsigned long frames, long *reward, int *done,
+                    const char **error_text, int require_game_adapter )
+{
   unsigned long pressed_keys[ FUSE_ML_GAME_MAX_KEYS_PER_ACTION ];
   size_t pressed_count = 0;
   size_t i;
@@ -330,15 +433,8 @@ fuse_ml_apply_action( unsigned long action, unsigned long frames,
   if( done ) *done = 0;
   if( error_text ) *error_text = "ERR action failed\n";
 
-  if( !fuse_ml_game_enabled() ) {
+  if( require_game_adapter && !fuse_ml_game_enabled() ) {
     if( error_text ) *error_text = "ERR game adapter disabled\n";
-    return 1;
-  }
-
-  if( fuse_ml_game_get_action_keys( action, action_keys,
-                                    ARRAY_SIZE( action_keys ),
-                                    &action_key_count ) ) {
-    if( error_text ) *error_text = "ERR invalid action\n";
     return 1;
   }
 
@@ -377,12 +473,44 @@ fuse_ml_apply_action( unsigned long action, unsigned long frames,
     return 1;
   }
 
-  if( fuse_ml_game_evaluate( reward, done ) ) {
-    if( error_text ) *error_text = "ERR game evaluate failed\n";
-    return 1;
+  if( fuse_ml_game_enabled() ) {
+    if( fuse_ml_game_evaluate( reward, done ) ) {
+      if( error_text ) *error_text = "ERR game evaluate failed\n";
+      return 1;
+    }
+  } else {
+    if( reward ) *reward = 0;
+    if( done ) *done = 0;
   }
 
   return 0;
+}
+
+static int
+fuse_ml_apply_action( unsigned long action, unsigned long frames,
+                      long *reward, int *done, const char **error_text )
+{
+  unsigned long action_keys[ FUSE_ML_GAME_MAX_KEYS_PER_ACTION ];
+  size_t action_key_count = 0;
+
+  if( reward ) *reward = 0;
+  if( done ) *done = 0;
+  if( error_text ) *error_text = "ERR action failed\n";
+
+  if( !fuse_ml_game_enabled() ) {
+    if( error_text ) *error_text = "ERR game adapter disabled\n";
+    return 1;
+  }
+
+  if( fuse_ml_game_get_action_keys( action, action_keys,
+                                    ARRAY_SIZE( action_keys ),
+                                    &action_key_count ) ) {
+    if( error_text ) *error_text = "ERR invalid action\n";
+    return 1;
+  }
+
+  return fuse_ml_apply_keys( action_keys, action_key_count, frames,
+                             reward, done, error_text, 1 );
 }
 
 static int
@@ -397,6 +525,34 @@ fuse_ml_episode_step( int fd, unsigned long action, unsigned long frames,
   char response[160];
 
   if( fuse_ml_apply_action( action, frames, &reward, &done, &error_text ) )
+    return fuse_ml_send_text( fd, error_text );
+
+  if( done && auto_reset ) {
+    if( fuse_ml_reset() ) return fuse_ml_send_text( fd, "ERR reset failed\n" );
+    reset_performed = 1;
+  }
+
+  fuse_ml_get_frame_dimensions( &width, &height );
+
+  snprintf( response, sizeof( response ), "EPISODE %u %u %d %d %ld %d %d\n",
+            (unsigned int)spectrum_frame_count(), (unsigned int)tstates,
+            width, height, reward, done, reset_performed );
+  return fuse_ml_send_text( fd, response );
+}
+
+static int
+fuse_ml_episode_step_keys( int fd, const unsigned long *keys, size_t key_count,
+                           unsigned long frames, int auto_reset )
+{
+  long reward = 0;
+  int done = 0;
+  int reset_performed = 0;
+  int width, height;
+  const char *error_text = NULL;
+  char response[160];
+
+  if( fuse_ml_apply_keys( keys, key_count, frames, &reward, &done,
+                          &error_text, 0 ) )
     return fuse_ml_send_text( fd, error_text );
 
   if( done && auto_reset ) {
@@ -519,6 +675,22 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
       return fuse_ml_send_text( fd, "ERR invalid auto_reset value\n" );
 
     return fuse_ml_episode_step( fd, action, frames, auto_reset );
+  } else if( !strcmp( command, "EPISODE_STEP_KEYS" ) ) {
+    unsigned long keys[ FUSE_ML_GAME_MAX_KEYS_PER_ACTION ];
+    size_t key_count = 0;
+    unsigned long frames;
+    int auto_reset = 0;
+
+    if( !arg1 || !arg2 || extra )
+      return fuse_ml_send_text( fd, "ERR usage: EPISODE_STEP_KEYS <key_chord> <frames> [auto_reset_0_or_1]\n" );
+    if( fuse_ml_parse_key_chord( arg1, keys, ARRAY_SIZE( keys ), &key_count ) )
+      return fuse_ml_send_text( fd, "ERR invalid key chord\n" );
+    if( fuse_ml_parse_ulong( arg2, &frames ) )
+      return fuse_ml_send_text( fd, "ERR invalid frame count\n" );
+    if( arg3 && fuse_ml_parse_bool( arg3, &auto_reset ) )
+      return fuse_ml_send_text( fd, "ERR invalid auto_reset value\n" );
+
+    return fuse_ml_episode_step_keys( fd, keys, key_count, frames, auto_reset );
   } else if( !strcmp( command, "QUIT" ) ) {
     fuse_exiting = 1;
     *disconnect = 1;
