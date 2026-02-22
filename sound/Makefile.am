@@ -42,4 +42,4 @@ noinst_HEADERS += \
                   sound/sfifo.h
 
 fuse_DEPENDENCIES += $(SOUND_LIBADD)
-fuse_LDADD += $(SOUND_LIBS) $(SOUND_LIBADD)
+fuse_LDADD += $(SOUND_LIBADD) $(SOUND_LIBS)
