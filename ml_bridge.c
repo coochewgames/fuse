@@ -212,6 +212,34 @@ fuse_ml_read_memory( int fd, unsigned long address, unsigned long length )
   return 0;
 }
 
+static int
+fuse_ml_write_memory( int fd, unsigned long address, const char *hexdata )
+{
+  size_t hex_len = strlen( hexdata );
+  unsigned long i;
+
+  if( hex_len == 0 || hex_len % 2 != 0 )
+    return fuse_ml_send_text( fd, "ERR hex data must be non-empty and even length\n" );
+  if( hex_len > 0x20000 )
+    return fuse_ml_send_text( fd, "ERR data too large\n" );
+
+  for( i = 0; i < hex_len; i++ ) {
+    char c = hexdata[i];
+    if( !( (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') ) )
+      return fuse_ml_send_text( fd, "ERR invalid hex character in data\n" );
+  }
+
+  for( i = 0; i < hex_len / 2; i++ ) {
+    char hi = hexdata[i * 2];
+    char lo = hexdata[i * 2 + 1];
+    int hi_val = (hi >= '0' && hi <= '9') ? hi - '0' : (hi >= 'a' && hi <= 'f') ? hi - 'a' + 10 : hi - 'A' + 10;
+    int lo_val = (lo >= '0' && lo <= '9') ? lo - '0' : (lo >= 'a' && lo <= 'f') ? lo - 'a' + 10 : lo - 'A' + 10;
+    writebyte_internal( (libspectrum_word)( address + i ), (libspectrum_byte)( (hi_val << 4) | lo_val ) );
+  }
+
+  return fuse_ml_send_text( fd, "OK\n" );
+}
+
 static void
 fuse_ml_get_frame_dimensions( int *width, int *height )
 {
@@ -249,6 +277,30 @@ fuse_ml_send_mode( int fd, const char *prefix )
             fuse_ml_visual_pace_ms );
 
   return fuse_ml_send_text( fd, response );
+}
+
+static int
+fuse_ml_send_attrs( int fd )
+{
+  static const char hex[] = "0123456789abcdef";
+  /* ZX Spectrum attribute table: 32*24 = 768 bytes at 0x5800 */
+  static const libspectrum_word ATTR_BASE = 0x5800;
+  static const int ATTR_COUNT = 768; /* 32 cols * 24 rows */
+
+  /* "ATTRS " + 1536 hex chars + "\n" = 1543 bytes */
+  char response[ 6 + 768 * 2 + 2 ];
+  int i;
+
+  memcpy( response, "ATTRS ", 6 );
+  for( i = 0; i < ATTR_COUNT; i++ ) {
+    libspectrum_byte b = readbyte_internal( (libspectrum_word)( ATTR_BASE + i ) );
+    response[ 6 + i * 2 ]     = hex[ b >> 4 ];
+    response[ 6 + i * 2 + 1 ] = hex[ b & 0x0f ];
+  }
+  response[ 6 + ATTR_COUNT * 2 ]     = '\n';
+  response[ 6 + ATTR_COUNT * 2 + 1 ] = '\0';
+
+  return fuse_ml_send( fd, response, 6 + ATTR_COUNT * 2 + 1 );
 }
 
 static int
@@ -569,6 +621,40 @@ fuse_ml_episode_step_keys( int fd, const unsigned long *keys, size_t key_count,
 }
 
 static int
+fuse_ml_step_attrs( int fd, const unsigned long *keys, size_t key_count,
+                    unsigned long frames )
+{
+  static const char hex[] = "0123456789abcdef";
+  static const libspectrum_word ATTR_BASE = 0x5800;
+  static const int ATTR_COUNT = 768;
+  const char *error_text = NULL;
+
+  /* "OBS " + 10 (frame_count) + " " + 1536 hex + "\n" = ~1549 bytes */
+  char response[ 4 + 10 + 1 + 768 * 2 + 2 ];
+  int prefix_len;
+  int i;
+
+  if( fuse_ml_apply_keys( keys, key_count, frames, NULL, NULL,
+                          &error_text, 0 ) )
+    return fuse_ml_send_text( fd, error_text ? error_text : "ERR step failed\n" );
+
+  prefix_len = snprintf( response, sizeof( response ), "OBS %u ",
+                         (unsigned int)spectrum_frame_count() );
+  if( prefix_len < 0 || prefix_len >= (int)sizeof( response ) )
+    return fuse_ml_send_text( fd, "ERR response buffer overflow\n" );
+
+  for( i = 0; i < ATTR_COUNT; i++ ) {
+    libspectrum_byte b = readbyte_internal( (libspectrum_word)( ATTR_BASE + i ) );
+    response[ prefix_len + i * 2 ]     = hex[ b >> 4 ];
+    response[ prefix_len + i * 2 + 1 ] = hex[ b & 0x0f ];
+  }
+  response[ prefix_len + ATTR_COUNT * 2 ]     = '\n';
+  response[ prefix_len + ATTR_COUNT * 2 + 1 ] = '\0';
+
+  return fuse_ml_send( fd, response, prefix_len + ATTR_COUNT * 2 + 1 );
+}
+
+static int
 fuse_ml_handle_command( int fd, char *line, int *disconnect )
 {
   char *command = strtok( line, " \t" );
@@ -614,6 +700,14 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
       return fuse_ml_send_text( fd, "ERR invalid address or length\n" );
 
     return fuse_ml_read_memory( fd, address, length );
+  } else if( !strcmp( command, "WRITE" ) ) {
+    unsigned long address;
+
+    if( !arg1 || !arg2 || arg3 || extra ) return fuse_ml_send_text( fd, "ERR usage: WRITE <addr> <hexdata>\n" );
+    if( fuse_ml_parse_ulong( arg1, &address ) )
+      return fuse_ml_send_text( fd, "ERR invalid address\n" );
+
+    return fuse_ml_write_memory( fd, address, arg2 );
   } else if( !strcmp( command, "GETINFO" ) ) {
     if( arg1 || arg2 || arg3 || extra ) return fuse_ml_send_text( fd, "ERR usage: GETINFO\n" );
     return fuse_ml_send_info( fd );
@@ -691,6 +785,22 @@ fuse_ml_handle_command( int fd, char *line, int *disconnect )
       return fuse_ml_send_text( fd, "ERR invalid auto_reset value\n" );
 
     return fuse_ml_episode_step_keys( fd, keys, key_count, frames, auto_reset );
+  } else if( !strcmp( command, "GETATTRS" ) ) {
+    if( arg1 || arg2 || arg3 || extra ) return fuse_ml_send_text( fd, "ERR usage: GETATTRS\n" );
+    return fuse_ml_send_attrs( fd );
+  } else if( !strcmp( command, "STEP_ATTRS" ) ) {
+    unsigned long keys[ FUSE_ML_GAME_MAX_KEYS_PER_ACTION ];
+    size_t key_count = 0;
+    unsigned long frames;
+
+    if( !arg1 || !arg2 || arg3 || extra )
+      return fuse_ml_send_text( fd, "ERR usage: STEP_ATTRS <key_chord> <frames>\n" );
+    if( fuse_ml_parse_key_chord( arg1, keys, ARRAY_SIZE( keys ), &key_count ) )
+      return fuse_ml_send_text( fd, "ERR invalid key chord\n" );
+    if( fuse_ml_parse_ulong( arg2, &frames ) )
+      return fuse_ml_send_text( fd, "ERR invalid frame count\n" );
+
+    return fuse_ml_step_attrs( fd, keys, key_count, frames );
   } else if( !strcmp( command, "QUIT" ) ) {
     fuse_exiting = 1;
     *disconnect = 1;
