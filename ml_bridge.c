@@ -374,7 +374,7 @@ fuse_ml_parse_key_name( const char *text, unsigned long *key )
 
   if( !text || !*text || !key ) return 1;
 
-  if( !strcmp( text, "-" ) || !strcmp( text, "0" ) || !strcmp( text, "none" ) ) {
+  if( !strcmp( text, "-" ) || !strcmp( text, "none" ) ) {
     *key = INPUT_KEY_NONE;
     return 0;
   }
